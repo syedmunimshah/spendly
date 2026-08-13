@@ -6,3 +6,6 @@ __pycache__/
 .env
 .DS_Store
 .claude/plans/
+.claude/worktrees/
+.claude/settings.local.json
+run.bat
