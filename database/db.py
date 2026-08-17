@@ -86,6 +86,45 @@ def init_db():
 
 
 # ------------------------------------------------------------------ #
+# Users                                                               #
+# ------------------------------------------------------------------ #
+
+def get_user_by_email(email):
+    """Look up a single user by email, or None if there isn't one.
+
+    The caller is responsible for normalising the address first — this stays a
+    plain lookup so there is only one place (the register route) deciding what
+    "the same email" means.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM users WHERE email = ?", (email,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def create_user(name, email, password_hash):
+    """Insert one user and return the new id.
+
+    Takes an already-hashed password on purpose: hashing at the call site keeps
+    it obvious that no plaintext ever reaches the database layer. A duplicate
+    email raises sqlite3.IntegrityError for the caller to handle.
+    """
+    conn = get_db()
+    try:
+        with conn:
+            cur = conn.execute(
+                "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+                (name, email, password_hash),
+            )
+            return cur.lastrowid
+    finally:
+        conn.close()
+
+
+# ------------------------------------------------------------------ #
 # Sample data                                                         #
 # ------------------------------------------------------------------ #
 
