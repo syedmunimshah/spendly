@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Your profile — Spendly{% endblock %}
+
+{% block head %}
+<style>
+    .profile-section {
+        max-width: var(--auth-width);
+        margin: 0 auto;
+        padding: 4rem 1.5rem 5rem;
+    }
+
+    .profile-header { margin-bottom: 2rem; }
+
+    .profile-title {
+        font-family: var(--font-display);
+        font-size: 2rem;
+        color: var(--ink);
+        margin-bottom: 0.35rem;
+    }
+
+    .profile-subtitle {
+        font-size: 0.95rem;
+        color: var(--ink-muted);
+    }
+
+    .profile-card {
+        background: var(--paper-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .profile-avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--accent-light);
+        color: var(--accent);
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .profile-field {
+        padding: 0.9rem 0;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .profile-field:last-child { border-bottom: none; }
+
+    .profile-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--ink-faint);
+        margin-bottom: 0.3rem;
+    }
+
+    .profile-value {
+        font-size: 0.95rem;
+        color: var(--ink-soft);
+    }
+
+    .profile-note {
+        background: var(--accent-2-light);
+        border: 1px solid var(--accent-2);
+        border-radius: var(--radius-sm);
+        padding: 0.9rem 1rem;
+        font-size: 0.85rem;
+        color: var(--ink-soft);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="profile-section">
+
+    <div class="profile-header">
+        <h1 class="profile-title">Your profile</h1>
+        <p class="profile-subtitle">Your Spendly account details</p>
+    </div>
+
+    <div class="profile-card">
+        <div class="profile-avatar">{{ user.name[0] | upper }}</div>
+
+        <div class="profile-field">
+            <span class="profile-label">Full name</span>
+            <span class="profile-value">{{ user.name }}</span>
+        </div>
+        <div class="profile-field">
+            <span class="profile-label">Email address</span>
+            <span class="profile-value">{{ user.email }}</span>
+        </div>
+        <div class="profile-field">
+            <span class="profile-label">Member since</span>
+            <span class="profile-value">{{ user.created_at[:10] }}</span>
+        </div>
+    </div>
+
+    <p class="profile-note">
+        Your expenses will appear here once tracking is switched on — every
+        rupee, in one place.
+    </p>
+
+</section>
+
+{% endblock %}
