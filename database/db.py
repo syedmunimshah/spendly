@@ -105,6 +105,22 @@ def get_user_by_email(email):
         conn.close()
 
 
+def get_user_by_id(user_id):
+    """Look up a single user by id, or None if there isn't one.
+
+    Returning None rather than raising matters for sessions: a cookie can
+    outlive the row it points at, and that should sign the visitor out quietly
+    instead of erroring on every page.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
 def create_user(name, email, password_hash):
     """Insert one user and return the new id.
 
