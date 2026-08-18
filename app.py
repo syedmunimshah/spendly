@@ -23,7 +23,7 @@ app.secret_key = os.environ.get("SPENDLY_SECRET_KEY", "dev-only-not-for-producti
 
 # Where a successful sign-in lands. Kept as one constant so later steps can
 # repoint it at the dashboard without touching the login route.
-LOGIN_REDIRECT = "landing"
+LOGIN_REDIRECT = "profile"
 
 # A throwaway hash to check against when the email is unknown. Without it that
 # path returns immediately while a wrong password pays for a real hash check,
@@ -200,12 +200,68 @@ def privacy():
     return render_template("privacy.html")
 
 
+# ------------------------------------------------------------------ #
+# Placeholder data for the profile page                               #
+# ------------------------------------------------------------------ #
+
+# Hardcoded on purpose: the layout is being agreed before any of it is wired
+# to the expenses table. A later step swaps these three constants for queries
+# and deletes this banner — the template does not change when that happens.
+#
+# The numbers are internally consistent and must stay that way: the rows below
+# sum to PROFILE_SUMMARY["total_spent"], the per-category totals sum to the
+# same figure, and "top_category" is the one appearing most often.
+
+PROFILE_TRANSACTIONS = [
+    {"date": "12 Apr 2025", "description": "Groceries", "category": "Food", "amount": "850.00"},
+    {"date": "11 Apr 2025", "description": "Metro card recharge", "category": "Transport", "amount": "500.00"},
+    {"date": "10 Apr 2025", "description": "Electricity bill", "category": "Bills", "amount": "2,200.00"},
+    {"date": "09 Apr 2025", "description": "Doctor visit", "category": "Health", "amount": "800.00"},
+    {"date": "08 Apr 2025", "description": "Netflix subscription", "category": "Entertainment", "amount": "649.00"},
+    {"date": "07 Apr 2025", "description": "New shoes", "category": "Shopping", "amount": "3,200.00"},
+    {"date": "05 Apr 2025", "description": "Dinner with friends", "category": "Food", "amount": "1,450.00"},
+    {"date": "01 Apr 2025", "description": "Miscellaneous", "category": "Other", "amount": "2,801.75"},
+]
+
+# Placeholder too. The name and email are not here on purpose — those come
+# from the signed-in user, so the card cannot contradict the navbar.
+PROFILE_MEMBER_SINCE = "15 Jan 2025"
+
+PROFILE_SUMMARY = {
+    "total_spent": "12,450.75",
+    "transaction_count": len(PROFILE_TRANSACTIONS),
+    # Food, not Shopping: this is the category logged most often, which is the
+    # one worth surfacing. Shopping is the single largest amount and already
+    # sits at the top of the breakdown below.
+    "top_category": "Food",
+}
+
+# Biggest first, the way the real GROUP BY will return them. `width` drives the
+# bar and is the share of the largest category, not of the total — otherwise
+# every bar sits in the left third and the comparison stops being readable.
+PROFILE_BREAKDOWN = [
+    {"category": "Shopping", "amount": "3,200.00", "width": 100},
+    {"category": "Other", "amount": "2,801.75", "width": 88},
+    {"category": "Food", "amount": "2,300.00", "width": 72},
+    {"category": "Bills", "amount": "2,200.00", "width": 69},
+    {"category": "Health", "amount": "800.00", "width": 25},
+    {"category": "Entertainment", "amount": "649.00", "width": 20},
+    {"category": "Transport", "amount": "500.00", "width": 16},
+]
+
+
 @app.route("/profile")
 @login_required
 def profile():
-    # `user` already reaches the template through the context processor, so
-    # there is nothing to pass here.
-    return render_template("profile.html")
+    # `user` reaches the template through the context processor; everything
+    # with a rupee sign is still placeholder data.
+    return render_template(
+        "profile.html",
+        member_since=PROFILE_MEMBER_SINCE,
+        summary=PROFILE_SUMMARY,
+        transactions=PROFILE_TRANSACTIONS,
+        breakdown=PROFILE_BREAKDOWN,
+    )
 
 
 # ------------------------------------------------------------------ #

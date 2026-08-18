@@ -1,80 +1,265 @@
 {% extends "base.html" %}
 
-{% block title %}Your profile — Spendly{% endblock %}
+{% block title %}My Profile — Spendly{% endblock %}
 
 {% block head %}
 <style>
+    /* ---------------------------------------------------------------- */
+    /* Layout                                                            */
+    /* ---------------------------------------------------------------- */
+
     .profile-section {
-        max-width: var(--auth-width);
+        max-width: var(--max-width);
         margin: 0 auto;
-        padding: 4rem 1.5rem 5rem;
+        padding: 2.5rem 2rem 4rem;
     }
 
-    .profile-header { margin-bottom: 2rem; }
-
-    .profile-title {
-        font-family: var(--font-display);
-        font-size: 2rem;
-        color: var(--ink);
-        margin-bottom: 0.35rem;
-    }
-
-    .profile-subtitle {
-        font-size: 0.95rem;
-        color: var(--ink-muted);
-    }
-
-    .profile-card {
+    .profile-panel {
         background: var(--paper-card);
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
-        padding: 2rem;
+        padding: 1.75rem;
+    }
+
+    .panel-title {
+        font-family: var(--font-display);
+        font-size: 1.15rem;
+        color: var(--ink);
         margin-bottom: 1.5rem;
     }
 
-    .profile-avatar {
-        width: 56px;
-        height: 56px;
+    /* Transactions get the room; the breakdown is a sidebar to them. Below
+       the breakpoint the two stack and the table keeps its full width. */
+    .profile-columns {
+        display: grid;
+        grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Identity card                                                     */
+    /* ---------------------------------------------------------------- */
+
+    .identity-card {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        background: var(--paper-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .identity-avatar {
+        width: 64px;
+        height: 64px;
+        flex-shrink: 0;
         border-radius: 50%;
-        background: var(--accent-light);
-        color: var(--accent);
-        font-family: var(--font-display);
-        font-size: 1.5rem;
+        background: var(--accent);
+        color: var(--paper);
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 1.2rem;
+        letter-spacing: 0.03em;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 1.5rem;
     }
 
-    .profile-field {
-        padding: 0.9rem 0;
-        border-bottom: 1px solid var(--border-soft);
-    }
-
-    .profile-field:last-child { border-bottom: none; }
-
-    .profile-label {
-        display: block;
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--ink-faint);
+    .identity-name {
+        font-family: var(--font-display);
+        font-size: 1.6rem;
+        line-height: 1.2;
+        color: var(--ink);
         margin-bottom: 0.3rem;
     }
 
-    .profile-value {
-        font-size: 0.95rem;
+    .identity-email {
+        font-size: 0.9rem;
+        color: var(--ink-muted);
+    }
+
+    .identity-since {
+        font-size: 0.78rem;
+        color: var(--ink-faint);
+        margin-top: 0.15rem;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Summary cards                                                     */
+    /* ---------------------------------------------------------------- */
+
+    .summary-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-card {
+        background: var(--paper-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1.5rem 1.75rem;
+    }
+
+    .summary-label {
+        font-size: 0.7rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--ink-faint);
+        margin-bottom: 0.6rem;
+    }
+
+    .summary-value {
+        font-family: var(--font-display);
+        font-size: 1.9rem;
+        line-height: 1.1;
+        color: var(--ink);
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Transaction table                                                 */
+    /* ---------------------------------------------------------------- */
+
+    /* The wrapper scrolls, not the page — a table that widens the body
+       reads as broken on a phone. */
+    .table-scroll { overflow-x: auto; }
+
+    .txn-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 520px;
+    }
+
+    .txn-table th {
+        text-align: left;
+        font-size: 0.68rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--ink-faint);
+        padding-bottom: 0.85rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .txn-table td {
+        font-size: 0.9rem;
+        color: var(--ink-soft);
+        padding: 0.95rem 0;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .txn-table tbody tr:last-child td { border-bottom: none; }
+
+    .txn-table th + th,
+    .txn-table td + td { padding-left: 1.25rem; }
+
+    .txn-date {
+        white-space: nowrap;
+        color: var(--ink-muted);
+    }
+
+    /* Tabular figures so the rupee column lines up digit for digit instead
+       of wobbling with the width of each numeral. */
+    .txn-amount {
+        text-align: right;
+        white-space: nowrap;
+        font-weight: 500;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Category badges and bars                                          */
+    /* ---------------------------------------------------------------- */
+
+    /* Colour arrives through two custom properties set by the .cat-* class,
+       so the badge and the bar for one category can never drift apart. */
+    .cat {
+        --cat-colour: var(--cat-other);
+        --cat-tint: var(--cat-other-light);
+    }
+
+    .cat-food { --cat-colour: var(--cat-food); --cat-tint: var(--cat-food-light); }
+    .cat-transport { --cat-colour: var(--cat-transport); --cat-tint: var(--cat-transport-light); }
+    .cat-bills { --cat-colour: var(--cat-bills); --cat-tint: var(--cat-bills-light); }
+    .cat-health { --cat-colour: var(--cat-health); --cat-tint: var(--cat-health-light); }
+    .cat-entertainment { --cat-colour: var(--cat-entertainment); --cat-tint: var(--cat-entertainment-light); }
+    .cat-shopping { --cat-colour: var(--cat-shopping); --cat-tint: var(--cat-shopping-light); }
+    .cat-other { --cat-colour: var(--cat-other); --cat-tint: var(--cat-other-light); }
+
+    .cat-badge {
+        display: inline-block;
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+        background: var(--cat-tint);
+        color: var(--cat-colour);
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Category breakdown                                                */
+    /* ---------------------------------------------------------------- */
+
+    .breakdown-row + .breakdown-row { margin-top: 1.1rem; }
+
+    .breakdown-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.45rem;
+    }
+
+    .breakdown-name {
+        font-size: 0.88rem;
         color: var(--ink-soft);
     }
 
-    .profile-note {
-        background: var(--accent-2-light);
-        border: 1px solid var(--accent-2);
-        border-radius: var(--radius-sm);
-        padding: 0.9rem 1rem;
+    .breakdown-amount {
         font-size: 0.85rem;
-        color: var(--ink-soft);
+        font-weight: 500;
+        color: var(--ink-muted);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .breakdown-track {
+        height: 6px;
+        background: var(--border-soft);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .breakdown-bar {
+        height: 100%;
+        border-radius: 999px;
+        background: var(--cat-colour);
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Responsive                                                        */
+    /* ---------------------------------------------------------------- */
+
+    @media (max-width: 900px) {
+        .profile-columns { grid-template-columns: 1fr; }
+        .summary-row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+        .profile-section { padding: 1.5rem 1rem 3rem; }
+
+        .identity-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
     }
 </style>
 {% endblock %}
@@ -83,32 +268,79 @@
 
 <section class="profile-section">
 
-    <div class="profile-header">
-        <h1 class="profile-title">Your profile</h1>
-        <p class="profile-subtitle">Your Spendly account details</p>
-    </div>
+    {# Two words at most, so a long name does not overflow the circle. #}
+    {% set initials = user.name.split()[:2] | map('first') | join | upper %}
 
-    <div class="profile-card">
-        <div class="profile-avatar">{{ user.name[0] | upper }}</div>
-
-        <div class="profile-field">
-            <span class="profile-label">Full name</span>
-            <span class="profile-value">{{ user.name }}</span>
-        </div>
-        <div class="profile-field">
-            <span class="profile-label">Email address</span>
-            <span class="profile-value">{{ user.email }}</span>
-        </div>
-        <div class="profile-field">
-            <span class="profile-label">Member since</span>
-            <span class="profile-value">{{ user.created_at[:10] }}</span>
+    <div class="identity-card">
+        <div class="identity-avatar">{{ initials }}</div>
+        <div>
+            <h1 class="identity-name">{{ user.name }}</h1>
+            <p class="identity-email">{{ user.email }}</p>
+            <p class="identity-since">Member since {{ member_since }}</p>
         </div>
     </div>
 
-    <p class="profile-note">
-        Your expenses will appear here once tracking is switched on — every
-        rupee, in one place.
-    </p>
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-label">Total spent</div>
+            <div class="summary-value">₹{{ summary.total_spent }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Transactions</div>
+            <div class="summary-value">{{ summary.transaction_count }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Top category</div>
+            <div class="summary-value">{{ summary.top_category }}</div>
+        </div>
+    </div>
+
+    <div class="profile-columns">
+
+        <div class="profile-panel">
+            <h2 class="panel-title">Recent Transactions</h2>
+            <div class="table-scroll">
+                <table class="txn-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th class="txn-amount">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for txn in transactions %}
+                        <tr>
+                            <td class="txn-date">{{ txn.date }}</td>
+                            <td>{{ txn.description }}</td>
+                            <td>
+                                <span class="cat cat-badge cat-{{ txn.category | lower }}">{{ txn.category }}</span>
+                            </td>
+                            <td class="txn-amount">₹{{ txn.amount }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="profile-panel">
+            <h2 class="panel-title">By Category</h2>
+            {% for row in breakdown %}
+            <div class="breakdown-row cat cat-{{ row.category | lower }}">
+                <div class="breakdown-head">
+                    <span class="breakdown-name">{{ row.category }}</span>
+                    <span class="breakdown-amount">₹{{ row.amount }}</span>
+                </div>
+                <div class="breakdown-track">
+                    <div class="breakdown-bar" style="width: {{ row.width }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
 
 </section>
 

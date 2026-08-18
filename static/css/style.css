@@ -19,6 +19,24 @@
     --border: #e4e1da;
     --border-soft: #eeebe4;
 
+    /* One colour per expense category, plus a tint for the badge behind it.
+       Defined here rather than per page so a category reads the same on the
+       profile bars, the expense list and the dashboard once those exist. */
+    --cat-food: #2f7d4f;
+    --cat-food-light: #e8f0eb;
+    --cat-transport: #c17f24;
+    --cat-transport-light: #fdf3e3;
+    --cat-bills: #3f6fb5;
+    --cat-bills-light: #e9eff8;
+    --cat-health: #c0392b;
+    --cat-health-light: #fdecea;
+    --cat-entertainment: #7a5bb5;
+    --cat-entertainment-light: #f0ebf8;
+    --cat-shopping: #d1732a;
+    --cat-shopping-light: #fdeee1;
+    --cat-other: #6b6b6b;
+    --cat-other-light: #f0ede6;
+
     --font-display: 'DM Serif Display', Georgia, serif;
     --font-body: 'DM Sans', system-ui, sans-serif;
 
