@@ -520,6 +520,14 @@ def add_expense():
     return redirect(url_for("profile"))
 
 
+@app.route("/analytics")
+@login_required
+def analytics():
+    # The charts themselves land in a later step. Until then this renders a
+    # real page rather than a bare string, so the nav link never dead-ends.
+    return render_template("analytics.html")
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #

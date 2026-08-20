@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics — Spendly{% endblock %}
+
+{% block head %}
+<style>
+    /* ---------------------------------------------------------------- */
+    /* Layout                                                            */
+    /* ---------------------------------------------------------------- */
+
+    .analytics-section {
+        max-width: var(--max-width);
+        margin: 0 auto;
+        padding: 3.5rem 2rem 5rem;
+        display: flex;
+        justify-content: center;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Card                                                              */
+    /* ---------------------------------------------------------------- */
+
+    /* White card straight on --paper with a full border, the same way the
+       profile panels read. An earlier version stacked it on a --paper-warm
+       slab, which put three near-identical off-whites on top of each other
+       and left the card with no visible edge at all. */
+    .soon-card {
+        width: 100%;
+        max-width: 520px;
+        background: var(--paper-card);
+        border: 1px solid var(--border-soft);
+        border-radius: var(--radius-md);
+        box-shadow: 0 4px 24px rgba(15, 15, 15, 0.07);
+        padding: 3rem 2.5rem 2.5rem;
+        text-align: center;
+    }
+
+    .soon-icon {
+        width: 76px;
+        height: 76px;
+        margin: 0 auto 1.5rem;
+        border-radius: var(--radius-md);
+        background: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .soon-icon svg {
+        width: 34px;
+        height: 34px;
+        stroke: var(--paper-card);
+        stroke-width: 1.75;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .soon-badge {
+        display: inline-block;
+        padding: 0.5rem 1.25rem;
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--paper-card);
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .soon-title {
+        font-family: var(--font-display);
+        font-size: 1.9rem;
+        color: var(--ink);
+        margin: 1.25rem 0 0.85rem;
+    }
+
+    .soon-copy {
+        max-width: 34ch;
+        margin: 0 auto;
+        color: var(--ink-muted);
+        font-size: 0.95rem;
+        line-height: 1.7;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Waiting dots                                                      */
+    /* ---------------------------------------------------------------- */
+
+    .soon-dots {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin: 2rem 0 1.25rem;
+    }
+
+    .soon-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--ink-faint);
+        animation: soon-pulse 1.4s ease-in-out infinite;
+    }
+
+    .soon-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .soon-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes soon-pulse {
+        0%, 100% { opacity: 0.3; }
+        50%      { opacity: 1; }
+    }
+
+    /* Anyone who has asked the OS to calm animations down gets three
+       still dots instead. */
+    @media (prefers-reduced-motion: reduce) {
+        .soon-dots span {
+            animation: none;
+            opacity: 0.6;
+        }
+    }
+
+    .soon-note {
+        color: var(--ink-faint);
+        font-size: 0.8rem;
+    }
+
+    @media (max-width: 600px) {
+        .analytics-section { padding: 2rem 1.25rem 3.5rem; }
+        .soon-card         { padding: 2.25rem 1.5rem 2rem; }
+        .soon-title        { font-size: 1.6rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="analytics-section">
+    <div class="soon-card">
+        <div class="soon-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7v5l3 2"></path>
+            </svg>
+        </div>
+
+        <span class="soon-badge">Coming soon</span>
+
+        <h1 class="soon-title">Advanced Analytics</h1>
+
+        <p class="soon-copy">
+            We're working on powerful insights and visualisations to help
+            you understand your spending patterns better.
+        </p>
+
+        <div class="soon-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <p class="soon-note">We're crafting something special</p>
+    </div>
+</section>
+{% endblock %}
