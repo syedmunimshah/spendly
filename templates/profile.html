@@ -28,6 +28,34 @@
         margin-bottom: 1.5rem;
     }
 
+    .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* The margin moves to .panel-head, or it would push the heading off
+       centre against the button. Scoped so the "By Category" panel, whose
+       .panel-title still stands alone, keeps its own spacing. */
+    .panel-head .panel-title {
+        margin-bottom: 0;
+    }
+
+    .panel-action {
+        font-family: var(--font-body);
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--paper);
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        border-radius: var(--radius-sm);
+        padding: 0.4rem 0.9rem;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
     /* Transactions get the room; the breakdown is a sidebar to them. Below
        the breakpoint the two stack and the table keeps its full width. */
     .profile-columns {
@@ -411,7 +439,10 @@
     <div class="profile-columns">
 
         <div class="profile-panel">
-            <h2 class="panel-title">Recent Transactions</h2>
+            <div class="panel-head">
+                <h2 class="panel-title">Recent Transactions</h2>
+                <a href="{{ url_for('add_expense') }}" class="panel-action">Add Expense</a>
+            </div>
             {% if transactions %}
             <div class="table-scroll">
                 <table class="txn-table">
