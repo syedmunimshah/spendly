@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
 from functools import wraps
 
 from flask import Flask, redirect, render_template, request, session, url_for
@@ -138,6 +138,84 @@ def format_member_since(value):
     """users.created_at -> "January 2026"."""
     parsed = _parse_stored(value)
     return parsed.strftime("%B %Y") if parsed else EMPTY
+
+
+# ------------------------------------------------------------------ #
+# Date filter                                                         #
+# ------------------------------------------------------------------ #
+
+# The whole filter lives in the query string: `?date_from=...&date_to=...` on
+# /profile. Nothing is kept in the session, so a filtered view is a URL you can
+# bookmark, share and refresh, and the back button does what it looks like it
+# does.
+
+RANGE_ERROR = "Start date must be before end date."
+
+
+def _parse_iso(value):
+    """A query-string date -> date, or None if it is missing or malformed.
+
+    Anything the user can type into a URL ends up here, so a bad value returns
+    None for the caller to treat as "no bound" rather than raising a 500.
+    """
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _months_back(today, months):
+    """`months` calendar months before `today`, clamping the day.
+
+    Stepping back from the 31st lands on months that have no 31st, so the day
+    is pulled in to the end of the target month: 31 May minus 3 months is
+    28 (or 29) February, not an error.
+    """
+    month_index = today.month - 1 - months
+    year = today.year + month_index // 12
+    month = month_index % 12 + 1
+
+    # Walk the day down instead of computing month lengths — at most three
+    # steps, and it needs no leap-year rule of its own.
+    day = today.day
+    while day > 1:
+        try:
+            return date(year, month, day)
+        except ValueError:
+            day -= 1
+    return date(year, month, 1)
+
+
+def build_filters(today, date_from, date_to):
+    """The preset links for the filter bar, with the active one marked.
+
+    Every range is computed here rather than in the template: Jinja has no
+    business doing calendar arithmetic, and the same numbers have to reach the
+    queries anyway. "All time" deliberately carries no parameters so it lands
+    back on a clean /profile.
+    """
+    presets = [
+        ("This Month", today.replace(day=1), today),
+        ("Last 3 Months", _months_back(today, 3), today),
+        ("Last 6 Months", _months_back(today, 6), today),
+        ("All Time", None, None),
+    ]
+
+    filters = []
+    for label, start, end in presets:
+        params = {}
+        if start and end:
+            params = {"date_from": start.isoformat(), "date_to": end.isoformat()}
+        filters.append(
+            {
+                "label": label,
+                "url": url_for("profile", **params),
+                # A custom range matches no preset, and then nothing lights up
+                # — the date inputs are already showing what is applied.
+                "active": start == date_from and end == date_to,
+            }
+        )
+    return filters
 
 
 # ------------------------------------------------------------------ #
@@ -295,8 +373,28 @@ def build_breakdown(category_totals):
 def profile():
     user = current_user()
 
-    totals = get_expense_totals_for_user(user["id"])
-    category_totals = get_category_totals_for_user(user["id"])
+    # Each bound is validated on its own: a typo in one should not throw away
+    # the other, and neither should ever reach SQL unparsed.
+    date_from = _parse_iso(request.args.get("date_from"))
+    date_to = _parse_iso(request.args.get("date_to"))
+
+    error = None
+    if date_from and date_to and date_from > date_to:
+        # A backwards range would quietly return nothing, which reads as "you
+        # spent nothing" rather than "you asked for an impossible window".
+        error = RANGE_ERROR
+        date_from = date_to = None
+
+    filters = build_filters(date.today(), date_from, date_to)
+
+    # The queries take strings, in the same ISO form the column stores.
+    start = date_from.isoformat() if date_from else None
+    end = date_to.isoformat() if date_to else None
+
+    totals = get_expense_totals_for_user(user["id"], date_from=start, date_to=end)
+    category_totals = get_category_totals_for_user(
+        user["id"], date_from=start, date_to=end
+    )
 
     transactions = [
         {
@@ -307,7 +405,9 @@ def profile():
             "category": expense["category"],
             "amount": format_rupees(expense["amount"]),
         }
-        for expense in get_expenses_for_user(user["id"], limit=RECENT_LIMIT)
+        for expense in get_expenses_for_user(
+            user["id"], limit=RECENT_LIMIT, date_from=start, date_to=end
+        )
     ]
 
     summary = {
@@ -325,6 +425,12 @@ def profile():
         summary=summary,
         transactions=transactions,
         breakdown=build_breakdown(category_totals),
+        filters=filters,
+        # Empty strings, not None — these go straight into the date inputs, and
+        # value="None" would show up as a stuck, unclearable value.
+        date_from=start or "",
+        date_to=end or "",
+        error=error,
     )
 
 

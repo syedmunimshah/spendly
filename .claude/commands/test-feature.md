@@ -1,6 +1,6 @@
 ---
 description: Writes and runs tests for a specific Spendly feature. Pass the spec name as argument e.g. /test-feature 05-backend-connection
-allowed-tools: Bash(python -m pytest)
+allowed-tools: Bash(venv/Scripts/python.exe -m pytest:*)
 ---
 
 Run the full testing pipeline for the feature specified 
@@ -56,7 +56,8 @@ context:
   - `app.py`
   - `database/` directory
 - Run command:
-  `python -m pytest tests/test_$ARGUMENTS.py -v`
+  `venv/Scripts/python.exe -m pytest tests/test_$ARGUMENTS.py -v`
+  (Python is not on PATH — a bare `python` or `pytest` will fail)
 - Instruction: Run ONLY the specified test file. Do 
   NOT run the full test suite. Analyze any failures by 
   cross-referencing the test code, the spec, and the 

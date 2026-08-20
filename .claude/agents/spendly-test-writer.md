@@ -25,7 +25,10 @@ You write tests based on **feature specifications and expected behavior**, never
 
 ## Test File Conventions
 - Place all test files in `tests/` directory
-- Name files `test_<feature>.py` (e.g., `test_login.py`, `test_expenses.py`, `test_db.py`)
+- Name the test file exactly as the invoking task specifies. The
+  `/test-feature` pipeline passes `tests/test_<spec-name>.py` — use that
+  path verbatim so the test file always matches its spec. Never invent a
+  shorter or renumbered name.
 - Use descriptive test function names: `test_<action>_<condition>_<expected_result>`
 - Group related tests in classes when it improves organization (e.g., `class TestLogin:`)
 

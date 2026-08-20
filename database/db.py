@@ -148,7 +148,26 @@ def create_user(name, email, password_hash):
 # one person's spending off another person's page, so it is not optional on
 # any expense query added later either.
 
-def get_expenses_for_user(user_id, limit=None):
+def _date_clause(date_from, date_to):
+    """Extra WHERE conditions for an optional date range, plus their params.
+
+    Bounds are inclusive and independent — either can be None — so a half-open
+    range still narrows instead of being silently ignored. Comparing the dates
+    as strings is safe because `expenses.date` is ISO YYYY-MM-DD, which sorts
+    in date order; the day the format changes, this breaks loudly.
+    """
+    sql = ""
+    params = []
+    if date_from:
+        sql += " AND date >= ?"
+        params.append(date_from)
+    if date_to:
+        sql += " AND date <= ?"
+        params.append(date_to)
+    return sql, params
+
+
+def get_expenses_for_user(user_id, limit=None, date_from=None, date_to=None):
     """One user's expenses, newest first.
 
     The `id DESC` tiebreak matters because dates are stored to the day: two
@@ -157,12 +176,12 @@ def get_expenses_for_user(user_id, limit=None):
     """
     conn = get_db()
     try:
-        sql = """
-            SELECT * FROM expenses
-            WHERE user_id = ?
-            ORDER BY date DESC, id DESC
-        """
-        params = [user_id]
+        date_sql, date_params = _date_clause(date_from, date_to)
+        # The range narrows what user_id already selected — it is appended to
+        # that condition, never in place of it.
+        sql = "SELECT * FROM expenses WHERE user_id = ?" + date_sql
+        sql += " ORDER BY date DESC, id DESC"
+        params = [user_id] + date_params
         if limit is not None:
             # Bound, not formatted in — a LIMIT is still a value, and the habit
             # of interpolating "just a number" is how injections start.
@@ -173,45 +192,53 @@ def get_expenses_for_user(user_id, limit=None):
         conn.close()
 
 
-def get_expense_totals_for_user(user_id):
+def get_expense_totals_for_user(user_id, date_from=None, date_to=None):
     """A single row with the user's `total` spend and `count` of expenses.
 
     COALESCE is doing real work: SUM over no rows is NULL, not 0, so without it
-    a freshly registered user would reach the template with None as their total.
+    a freshly registered user — or one who picked a range with nothing in it —
+    would reach the template with None as their total.
     """
     conn = get_db()
     try:
+        date_sql, date_params = _date_clause(date_from, date_to)
         return conn.execute(
             """
             SELECT COALESCE(SUM(amount), 0) AS total,
                    COUNT(*)                 AS count
             FROM expenses
             WHERE user_id = ?
-            """,
-            (user_id,),
+            """
+            + date_sql,
+            [user_id] + date_params,
         ).fetchone()
     finally:
         conn.close()
 
 
-def get_category_totals_for_user(user_id):
+def get_category_totals_for_user(user_id, date_from=None, date_to=None):
     """Per-category totals for one user, biggest first.
 
     Ordering here rather than in the caller keeps the "top category" and the
     breakdown list reading from the same source of truth — the first row is
-    both the widest bar and the headline figure.
+    both the widest bar and the headline figure. A category with nothing inside
+    the range drops out of the result entirely rather than showing a zero bar.
     """
     conn = get_db()
     try:
+        date_sql, date_params = _date_clause(date_from, date_to)
         return conn.execute(
             """
             SELECT category, SUM(amount) AS total
             FROM expenses
             WHERE user_id = ?
+            """
+            + date_sql
+            + """
             GROUP BY category
             ORDER BY total DESC
             """,
-            (user_id,),
+            [user_id] + date_params,
         ).fetchall()
     finally:
         conn.close()
