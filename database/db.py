@@ -141,6 +141,83 @@ def create_user(name, email, password_hash):
 
 
 # ------------------------------------------------------------------ #
+# Expenses                                                            #
+# ------------------------------------------------------------------ #
+
+# Every query here filters on user_id. That filter is the only thing keeping
+# one person's spending off another person's page, so it is not optional on
+# any expense query added later either.
+
+def get_expenses_for_user(user_id, limit=None):
+    """One user's expenses, newest first.
+
+    The `id DESC` tiebreak matters because dates are stored to the day: two
+    expenses logged on the same date would otherwise come back in whatever
+    order SQLite felt like, and the list would reshuffle between page loads.
+    """
+    conn = get_db()
+    try:
+        sql = """
+            SELECT * FROM expenses
+            WHERE user_id = ?
+            ORDER BY date DESC, id DESC
+        """
+        params = [user_id]
+        if limit is not None:
+            # Bound, not formatted in — a LIMIT is still a value, and the habit
+            # of interpolating "just a number" is how injections start.
+            sql += " LIMIT ?"
+            params.append(limit)
+        return conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+
+def get_expense_totals_for_user(user_id):
+    """A single row with the user's `total` spend and `count` of expenses.
+
+    COALESCE is doing real work: SUM over no rows is NULL, not 0, so without it
+    a freshly registered user would reach the template with None as their total.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            """
+            SELECT COALESCE(SUM(amount), 0) AS total,
+                   COUNT(*)                 AS count
+            FROM expenses
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def get_category_totals_for_user(user_id):
+    """Per-category totals for one user, biggest first.
+
+    Ordering here rather than in the caller keeps the "top category" and the
+    breakdown list reading from the same source of truth — the first row is
+    both the widest bar and the headline figure.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            """
+            SELECT category, SUM(amount) AS total
+            FROM expenses
+            WHERE user_id = ?
+            GROUP BY category
+            ORDER BY total DESC
+            """,
+            (user_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+# ------------------------------------------------------------------ #
 # Sample data                                                         #
 # ------------------------------------------------------------------ #
 

@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime
 from functools import wraps
 
 from flask import Flask, redirect, render_template, request, session, url_for
@@ -7,7 +8,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import (
     create_user,
+    get_category_totals_for_user,
     get_db,
+    get_expense_totals_for_user,
+    get_expenses_for_user,
     get_user_by_email,
     get_user_by_id,
     init_db,
@@ -87,6 +91,53 @@ def anonymous_only(view):
 def inject_user():
     """Give every template a `user` variable for the navbar."""
     return {"user": current_user()}
+
+
+# ------------------------------------------------------------------ #
+# Formatting helpers                                                  #
+# ------------------------------------------------------------------ #
+
+# Presentation lives here, not in SQL and not in the template: the queries
+# return numbers, the template prints strings, and this is the one seam where
+# a rupee becomes "13,420.00".
+
+# Shown wherever a value is missing — an em dash, not an empty cell, so the
+# row still reads as a row.
+EMPTY = "—"
+
+
+def format_rupees(amount):
+    """1234.5 -> "1,234.50". The template supplies the sign."""
+    return "{:,.2f}".format(amount or 0)
+
+
+def _parse_stored(value):
+    """Parse what SQLite handed back, whether or not it carries a time.
+
+    `expenses.date` is a bare date, `users.created_at` has a time appended by
+    datetime('now'), and both arrive as plain strings.
+    """
+    text = str(value or "").strip()
+    for length, fmt in ((19, "%Y-%m-%d %H:%M:%S"), (10, "%Y-%m-%d")):
+        try:
+            return datetime.strptime(text[:length], fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def format_date(value):
+    """ISO date -> "12 Apr 2025", or the em dash if it cannot be read."""
+    parsed = _parse_stored(value)
+    # Zero-padded, matching the dates the page was designed against — the day
+    # column stays the same width down the table.
+    return parsed.strftime("%d %b %Y") if parsed else EMPTY
+
+
+def format_member_since(value):
+    """users.created_at -> "January 2026"."""
+    parsed = _parse_stored(value)
+    return parsed.strftime("%B %Y") if parsed else EMPTY
 
 
 # ------------------------------------------------------------------ #
@@ -200,67 +251,80 @@ def privacy():
     return render_template("privacy.html")
 
 
-# ------------------------------------------------------------------ #
-# Placeholder data for the profile page                               #
-# ------------------------------------------------------------------ #
+# How many rows the transactions panel shows. The summary cards and the
+# breakdown deliberately cover everything — only the table is trimmed.
+RECENT_LIMIT = 10
 
-# Hardcoded on purpose: the layout is being agreed before any of it is wired
-# to the expenses table. A later step swaps these three constants for queries
-# and deletes this banner — the template does not change when that happens.
-#
-# The numbers are internally consistent and must stay that way: the rows below
-# sum to PROFILE_SUMMARY["total_spent"], the per-category totals sum to the
-# same figure, and "top_category" is the one appearing most often.
 
-PROFILE_TRANSACTIONS = [
-    {"date": "12 Apr 2025", "description": "Groceries", "category": "Food", "amount": "850.00"},
-    {"date": "11 Apr 2025", "description": "Metro card recharge", "category": "Transport", "amount": "500.00"},
-    {"date": "10 Apr 2025", "description": "Electricity bill", "category": "Bills", "amount": "2,200.00"},
-    {"date": "09 Apr 2025", "description": "Doctor visit", "category": "Health", "amount": "800.00"},
-    {"date": "08 Apr 2025", "description": "Netflix subscription", "category": "Entertainment", "amount": "649.00"},
-    {"date": "07 Apr 2025", "description": "New shoes", "category": "Shopping", "amount": "3,200.00"},
-    {"date": "05 Apr 2025", "description": "Dinner with friends", "category": "Food", "amount": "1,450.00"},
-    {"date": "01 Apr 2025", "description": "Miscellaneous", "category": "Other", "amount": "2,801.75"},
-]
+def build_breakdown(category_totals):
+    """Turn per-category totals into the rows the breakdown panel renders.
 
-# Placeholder too. The name and email are not here on purpose — those come
-# from the signed-in user, so the card cannot contradict the navbar.
-PROFILE_MEMBER_SINCE = "15 Jan 2025"
+    Two different percentages come out of this, and they are not
+    interchangeable. `width` drives the bar and is the share of the *largest*
+    category, so the biggest one fills the track and the rest are readable
+    against it. `pct` is the share of the total, rounded to whole numbers that
+    add up to exactly 100 — the label, not the bar.
+    """
+    rows = [(row["category"], row["total"]) for row in category_totals]
+    if not rows:
+        return []
 
-PROFILE_SUMMARY = {
-    "total_spent": "12,450.75",
-    "transaction_count": len(PROFILE_TRANSACTIONS),
-    # Food, not Shopping: this is the category logged most often, which is the
-    # one worth surfacing. Shopping is the single largest amount and already
-    # sits at the top of the breakdown below.
-    "top_category": "Food",
-}
+    largest = rows[0][1] or 0
+    grand_total = sum(total for _, total in rows)
 
-# Biggest first, the way the real GROUP BY will return them. `width` drives the
-# bar and is the share of the largest category, not of the total — otherwise
-# every bar sits in the left third and the comparison stops being readable.
-PROFILE_BREAKDOWN = [
-    {"category": "Shopping", "amount": "3,200.00", "width": 100},
-    {"category": "Other", "amount": "2,801.75", "width": 88},
-    {"category": "Food", "amount": "2,300.00", "width": 72},
-    {"category": "Bills", "amount": "2,200.00", "width": 69},
-    {"category": "Health", "amount": "800.00", "width": 25},
-    {"category": "Entertainment", "amount": "649.00", "width": 20},
-    {"category": "Transport", "amount": "500.00", "width": 16},
-]
+    breakdown = [
+        {
+            "category": category,
+            "amount": format_rupees(total),
+            # Guard the division: every amount could legitimately be 0.
+            "width": round(total / largest * 100) if largest else 0,
+            "pct": round(total / grand_total * 100) if grand_total else 0,
+        }
+        for category, total in rows
+    ]
+
+    # Rounding each share independently rarely lands on 100. The largest row
+    # absorbs the difference because a point or two moves it least.
+    breakdown[0]["pct"] += 100 - sum(row["pct"] for row in breakdown)
+
+    return breakdown
 
 
 @app.route("/profile")
 @login_required
 def profile():
-    # `user` reaches the template through the context processor; everything
-    # with a rupee sign is still placeholder data.
+    user = current_user()
+
+    totals = get_expense_totals_for_user(user["id"])
+    category_totals = get_category_totals_for_user(user["id"])
+
+    transactions = [
+        {
+            "date": format_date(expense["date"]),
+            # A description is optional in the schema; the cell still needs
+            # something in it.
+            "description": (expense["description"] or "").strip() or EMPTY,
+            "category": expense["category"],
+            "amount": format_rupees(expense["amount"]),
+        }
+        for expense in get_expenses_for_user(user["id"], limit=RECENT_LIMIT)
+    ]
+
+    summary = {
+        "total_spent": format_rupees(totals["total"]),
+        "transaction_count": totals["count"],
+        # The heaviest category, which is the first row by construction. A user
+        # with nothing logged yet has no answer, and says so.
+        "top_category": category_totals[0]["category"] if category_totals else EMPTY,
+    }
+
+    # `user` reaches the template through the context processor.
     return render_template(
         "profile.html",
-        member_since=PROFILE_MEMBER_SINCE,
-        summary=PROFILE_SUMMARY,
-        transactions=PROFILE_TRANSACTIONS,
-        breakdown=PROFILE_BREAKDOWN,
+        member_since=format_member_since(user["created_at"]),
+        summary=summary,
+        transactions=transactions,
+        breakdown=build_breakdown(category_totals),
     )
 
 
