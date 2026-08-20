@@ -1,3 +1,4 @@
+import math
 import os
 import sqlite3
 from datetime import date, datetime
@@ -7,6 +8,7 @@ from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import (
+    CATEGORIES,
     create_user,
     get_category_totals_for_user,
     get_db,
@@ -15,6 +17,7 @@ from database.db import (
     get_user_by_email,
     get_user_by_id,
     init_db,
+    insert_expense,
     seed_db,
 )
 
@@ -333,6 +336,10 @@ def privacy():
 # breakdown deliberately cover everything — only the table is trimmed.
 RECENT_LIMIT = 10
 
+# Matches the maxlength on the description input. The browser enforces it for
+# anyone using the form; this constant is what enforces it for anyone not.
+DESCRIPTION_MAX = 200
+
 
 def build_breakdown(category_totals):
     """Turn per-category totals into the rows the breakdown panel renders.
@@ -434,6 +441,85 @@ def profile():
     )
 
 
+@app.route("/expenses/add", methods=["GET", "POST"])
+@login_required
+def add_expense():
+    today = date.today().isoformat()
+
+    if request.method == "GET":
+        return render_template(
+            "add_expense.html", categories=CATEGORIES, today=today
+        )
+
+    amount_raw = request.form.get("amount", "").strip()
+    category = request.form.get("category", "").strip()
+    date_raw = request.form.get("date", "").strip()
+    description = request.form.get("description", "").strip()
+
+    # Whatever was typed comes back with the page, unparsed, so a rejected
+    # submission looks exactly as the user left it.
+    form = {
+        "amount": amount_raw,
+        "category": category,
+        "date": date_raw,
+        "description": description,
+    }
+
+    def fail(error):
+        return render_template(
+            "add_expense.html",
+            error=error,
+            form=form,
+            categories=CATEGORIES,
+            today=today,
+        )
+
+    if not amount_raw:
+        return fail("Please enter an amount.")
+
+    try:
+        amount = float(amount_raw)
+    except ValueError:
+        return fail("Amount must be a number.")
+
+    # float() happily returns nan and inf, and both would sail past the check
+    # below — nan fails every comparison, inf passes them all — straight into
+    # the REAL column. Neither is reachable through the form, only a raw POST.
+    if not math.isfinite(amount):
+        return fail("Amount must be a number.")
+
+    if amount <= 0:
+        return fail("Amount must be greater than zero.")
+
+    if category not in CATEGORIES:
+        return fail("Please choose a category.")
+
+    # Missing and malformed collapse into one message: the field is required
+    # and must parse, and the user cannot act differently on the two.
+    parsed_date = _parse_iso(date_raw)
+    if parsed_date is None:
+        return fail("Please enter a valid date.")
+
+    if len(description) > DESCRIPTION_MAX:
+        return fail(
+            "Description must be {} characters or less.".format(DESCRIPTION_MAX)
+        )
+
+    insert_expense(
+        session["user_id"],
+        # Rounded so the stored figure matches what format_rupees prints —
+        # otherwise the summary total would not reconcile with the rows.
+        round(amount, 2),
+        category,
+        # isoformat(), not date_raw: strptime accepts "2026-3-20", which sorts
+        # wrong as TEXT and would quietly fall outside the Step 6 date filter.
+        parsed_date.isoformat(),
+        description or None,
+    )
+
+    return redirect(url_for("profile"))
+
+
 @app.route("/analytics")
 @login_required
 def analytics():
@@ -445,11 +531,6 @@ def analytics():
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
-
-@app.route("/expenses/add")
-def add_expense():
-    return "Add expense — coming in Step 7"
-
 
 @app.route("/expenses/<int:id>/edit")
 def edit_expense(id):
