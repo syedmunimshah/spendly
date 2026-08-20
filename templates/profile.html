@@ -88,6 +88,90 @@
     }
 
     /* ---------------------------------------------------------------- */
+    /* Filter bar                                                        */
+    /* ---------------------------------------------------------------- */
+
+    /* Presets on the left, the custom range on the right, and both wrap
+       independently — the bar reflows instead of widening the page. */
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        background: var(--paper-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-presets,
+    .filter-custom {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .filter-preset {
+        padding: 0.4rem 0.85rem;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 0.8rem;
+        color: var(--ink-muted);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .filter-preset:hover { border-color: var(--ink-faint); }
+
+    /* The applied range. A custom range matches no preset, so none of these
+       light up and the date inputs below carry the state instead. */
+    .filter-preset.is-active {
+        background: var(--accent-light);
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 500;
+    }
+
+    .filter-custom input[type="date"] {
+        font-family: var(--font-body);
+        font-size: 0.8rem;
+        color: var(--ink-soft);
+        background: var(--paper);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.35rem 0.5rem;
+    }
+
+    .filter-sep {
+        font-size: 0.8rem;
+        color: var(--ink-faint);
+    }
+
+    .filter-apply {
+        font-family: var(--font-body);
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--paper);
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        border-radius: var(--radius-sm);
+        padding: 0.4rem 0.9rem;
+        cursor: pointer;
+    }
+
+    .filter-error {
+        font-size: 0.85rem;
+        color: var(--danger);
+        background: var(--danger-light);
+        border-radius: var(--radius-sm);
+        padding: 0.7rem 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* ---------------------------------------------------------------- */
     /* Summary cards                                                     */
     /* ---------------------------------------------------------------- */
 
@@ -289,6 +373,25 @@
             <p class="identity-since">Member since {{ member_since }}</p>
         </div>
     </div>
+
+    {# A GET form, so applying a range lands on a URL you can bookmark. #}
+    <div class="filter-bar">
+        <div class="filter-presets">
+            {% for f in filters %}
+            <a class="filter-preset{% if f.active %} is-active{% endif %}" href="{{ f.url }}">{{ f.label }}</a>
+            {% endfor %}
+        </div>
+        <form class="filter-custom" method="get" action="{{ url_for('profile') }}">
+            <input type="date" name="date_from" value="{{ date_from }}" aria-label="From date">
+            <span class="filter-sep">to</span>
+            <input type="date" name="date_to" value="{{ date_to }}" aria-label="To date">
+            <button type="submit" class="filter-apply">Apply</button>
+        </form>
+    </div>
+
+    {% if error %}
+    <p class="filter-error">{{ error }}</p>
+    {% endif %}
 
     <div class="summary-row">
         <div class="summary-card">
