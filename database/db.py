@@ -244,6 +244,35 @@ def get_category_totals_for_user(user_id, date_from=None, date_to=None):
         conn.close()
 
 
+def insert_expense(user_id, amount, category, date, description=None):
+    """Store one expense and hand back its new id.
+
+    Everything arriving here is already validated — the route owns that, the
+    same split that has create_user() take an already-hashed password.
+
+    `created_at` is deliberately absent from the column list so the table's
+    own DEFAULT fills it in. `description` defaults to None rather than "" so
+    a caller that simply omits it stores NULL.
+
+    The `date` parameter shadows the module-level datetime.date import, which
+    is harmless here: this body never needs it, and naming the parameter after
+    its column keeps the call site readable.
+    """
+    conn = get_db()
+    try:
+        with conn:
+            cur = conn.execute(
+                """
+                INSERT INTO expenses (user_id, amount, category, date, description)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user_id, amount, category, date, description),
+            )
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
 # ------------------------------------------------------------------ #
 # Sample data                                                         #
 # ------------------------------------------------------------------ #

@@ -20,6 +20,7 @@
             </a>
             <div class="nav-links">
                 {% if user %}
+                <a href="{{ url_for('add_expense') }}">Add Expense</a>
                 <a href="{{ url_for('profile') }}">{{ user.name }}</a>
                 {# nav-cta keeps Sign out visible on mobile, where the
                    breakpoint hides every other link in this bar. #}
