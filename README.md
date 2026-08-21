@@ -3,10 +3,14 @@
 A personal expense tracker built with Flask and SQLite. Log what you spend, group it by category, and see where the month actually went — amounts in rupees, no spreadsheet required.
 
 <p align="left">
+  <a href="https://spendly-production-27a9.up.railway.app"><img src="https://img.shields.io/badge/live_demo-spendly.up.railway.app-1a472a?style=flat-square&logo=railway&logoColor=white" alt="Live demo" /></a>
+</p>
+
+<p align="left">
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12" />
   <img src="https://img.shields.io/badge/Flask-3.1-000000?style=flat-square&logo=flask&logoColor=white" alt="Flask 3.1" />
   <img src="https://img.shields.io/badge/SQLite-raw_SQL-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite" />
-  <img src="https://img.shields.io/badge/tests-128_passing-3B6D11?style=flat-square&logo=pytest&logoColor=white" alt="128 tests passing" />
+  <img src="https://img.shields.io/badge/tests-156_passing-3B6D11?style=flat-square&logo=pytest&logoColor=white" alt="156 tests passing" />
 </p>
 
 ---
@@ -19,6 +23,7 @@ Spendly is a small, deliberately un-clever web app. You sign up, sign in, and ge
 - **Category breakdown** — spending split across Food, Transport, Bills, Health, Entertainment, Shopping and Other, each with its own colour
 - **Recent transactions** — the latest ten entries, dated and categorised
 - **Add, edit and delete** — a validated form for logging an expense, the same form for changing one, and a delete that only ever reaches your own rows
+- **Analytics** — a twelve-month spending trend and a category ring, both plain SVG drawn on the server, so the charts render with JavaScript off
 - **Date filter** — one-click presets (This Month, Last 3 Months, Last 6 Months, All Time) or a custom range. The filter lives entirely in the query string, so any filtered view is a URL you can bookmark, share, and refresh
 - **Session-based auth** — register, sign in, sign out, with hashed passwords and every query scoped to the signed-in user
 
@@ -33,7 +38,7 @@ Spendly is a small, deliberately un-clever web app. You sign up, sign in, and ge
 | Passwords | **Werkzeug** `generate_password_hash` | Never stores a plaintext password |
 | Templates | **Jinja2** | Every page extends one `base.html` |
 | Styling | **Hand-written CSS** | One stylesheet, design tokens in `:root`, no framework and no build step |
-| Tests | **pytest** + **pytest-flask** | 128 tests against the Flask test client |
+| Tests | **pytest** + **pytest-flask** | 156 tests against the Flask test client |
 
 No Node, no bundler, no ORM, no CSS framework. Four dependencies total.
 
@@ -83,8 +88,8 @@ templates/
   profile.html          summary cards, category breakdown, transactions, date filter
   _expense_form.html    the shared expense fields, included by both forms below
   add_expense.html      logging a new expense
-  edit_expense.html     changing one, plus the delete danger zone
-  analytics.html        placeholder for the charts still to come
+  edit_expense.html     changing one
+  analytics.html        monthly trend and category charts, drawn as inline SVG
   terms.html            .
   privacy.html          .
 static/
@@ -137,7 +142,19 @@ Every change also goes through a security pass and a code-quality pass before it
 | Date filter | Done |
 | Add expense | Done |
 | Edit / delete expense | Done |
-| Analytics | Placeholder page |
+| Analytics | Done |
+
+---
+
+## Deployment
+
+Live at **[spendly-production-27a9.up.railway.app](https://spendly-production-27a9.up.railway.app)**, running on Railway.
+
+Three things the app needed before it could be hosted:
+
+- **gunicorn** instead of Flask's own server, bound to `0.0.0.0:$PORT`. A container listening on localhost is unreachable from outside it. One worker on purpose — several processes writing to one SQLite file over a network volume is how you collect lock errors.
+- **`SPENDLY_DB_PATH`**, so the database sits on a mounted volume at `/data`. A hosted container rebuilds its own directory on every deploy, so a file next to `app.py` would be wiped by each release.
+- **`SPENDLY_SECRET_KEY`** set as a real secret. The code falls back to a development key so the dev server runs out of the box, and shipping that fallback would mean forgeable sessions.
 
 ---
 

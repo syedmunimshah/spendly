@@ -1,0 +1,16 @@
+# Nothing here is needed to run the app, and venv/ alone is hundreds of
+# megabytes of Windows-built binaries the Linux container cannot use anyway.
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# The local database. The deployed one lives on a mounted volume — uploading
+# this would overwrite it on the first boot with whatever happened to be on
+# the developer's laptop.
+expense_tracker.db
+
+tests/
+.claude/
+.vscode/
+*.png
