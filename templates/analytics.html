@@ -11,153 +11,318 @@
     .analytics-section {
         max-width: var(--max-width);
         margin: 0 auto;
-        padding: 3.5rem 2rem 5rem;
-        display: flex;
-        justify-content: center;
+        padding: 2.5rem 2rem 4rem;
     }
 
-    /* ---------------------------------------------------------------- */
-    /* Card                                                              */
-    /* ---------------------------------------------------------------- */
+    .analytics-header {
+        margin-bottom: 1.5rem;
+    }
 
-    /* White card straight on --paper with a full border, the same way the
-       profile panels read. An earlier version stacked it on a --paper-warm
-       slab, which put three near-identical off-whites on top of each other
-       and left the card with no visible edge at all. */
-    .soon-card {
-        width: 100%;
-        max-width: 520px;
+    .analytics-title {
+        font-family: var(--font-display);
+        font-size: 1.8rem;
+        color: var(--ink);
+        margin-bottom: 0.3rem;
+    }
+
+    .analytics-subtitle {
+        font-size: 0.92rem;
+        color: var(--ink-muted);
+    }
+
+    .analytics-panel {
         background: var(--paper-card);
-        border: 1px solid var(--border-soft);
+        border: 1px solid var(--border);
         border-radius: var(--radius-md);
-        box-shadow: 0 4px 24px rgba(15, 15, 15, 0.07);
-        padding: 3rem 2.5rem 2.5rem;
-        text-align: center;
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
     }
 
-    .soon-icon {
-        width: 76px;
-        height: 76px;
-        margin: 0 auto 1.5rem;
+    .panel-title {
+        font-family: var(--font-display);
+        font-size: 1.15rem;
+        color: var(--ink);
+        margin-bottom: 1.5rem;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Summary cards                                                     */
+    /* ---------------------------------------------------------------- */
+
+    .summary-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-card {
+        background: var(--paper-card);
+        border: 1px solid var(--border);
         border-radius: var(--radius-md);
-        background: var(--accent);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        padding: 1.5rem 1.75rem;
     }
 
-    .soon-icon svg {
-        width: 34px;
-        height: 34px;
-        stroke: var(--paper-card);
-        stroke-width: 1.75;
-        fill: none;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-    }
-
-    .soon-badge {
-        display: inline-block;
-        padding: 0.5rem 1.25rem;
-        border-radius: 999px;
-        background: var(--accent);
-        color: var(--paper-card);
+    .summary-label {
         font-size: 0.7rem;
-        font-weight: 600;
-        letter-spacing: 0.12em;
+        font-weight: 500;
         text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--ink-faint);
+        margin-bottom: 0.6rem;
     }
 
-    .soon-title {
+    .summary-value {
         font-family: var(--font-display);
         font-size: 1.9rem;
+        line-height: 1.1;
         color: var(--ink);
-        margin: 1.25rem 0 0.85rem;
     }
 
-    .soon-copy {
-        max-width: 34ch;
-        margin: 0 auto;
-        color: var(--ink-muted);
-        font-size: 0.95rem;
-        line-height: 1.7;
-    }
-
-    /* ---------------------------------------------------------------- */
-    /* Waiting dots                                                      */
-    /* ---------------------------------------------------------------- */
-
-    .soon-dots {
-        display: flex;
-        justify-content: center;
-        gap: 0.5rem;
-        margin: 2rem 0 1.25rem;
-    }
-
-    .soon-dots span {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--ink-faint);
-        animation: soon-pulse 1.4s ease-in-out infinite;
-    }
-
-    .soon-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .soon-dots span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes soon-pulse {
-        0%, 100% { opacity: 0.3; }
-        50%      { opacity: 1; }
-    }
-
-    /* Anyone who has asked the OS to calm animations down gets three
-       still dots instead. */
-    @media (prefers-reduced-motion: reduce) {
-        .soon-dots span {
-            animation: none;
-            opacity: 0.6;
-        }
-    }
-
-    .soon-note {
+    .summary-note {
+        font-size: 0.78rem;
         color: var(--ink-faint);
+        margin-top: 0.35rem;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Trend chart                                                       */
+    /* ---------------------------------------------------------------- */
+
+    /* The SVG scales to the panel; the viewBox keeps the geometry fixed so
+       the bars never distort. */
+    .chart {
+        width: 100%;
+        height: auto;
+        display: block;
+        overflow: visible;
+    }
+
+    .chart-grid {
+        stroke: var(--border-soft);
+        stroke-width: 1;
+    }
+
+    .chart-axis-label {
+        fill: var(--ink-faint);
+        font-family: var(--font-body);
+        font-size: 11px;
+    }
+
+    .chart-month {
+        fill: var(--ink-muted);
+        font-family: var(--font-body);
+        font-size: 12px;
+    }
+
+    .chart-year {
+        fill: var(--ink-faint);
+        font-family: var(--font-body);
+        font-size: 10px;
+    }
+
+    .chart-bar {
+        fill: var(--accent);
+        transition: fill 0.15s;
+    }
+
+    .chart-bar:hover { fill: var(--ink); }
+
+    /* A month with nothing in it still gets a stub, so the gap reads as a
+       real zero rather than a bar that failed to draw. */
+    .chart-bar-empty {
+        fill: var(--border);
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Category donut                                                    */
+    /* ---------------------------------------------------------------- */
+
+    .donut-layout {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        gap: 2.5rem;
+        align-items: center;
+    }
+
+    .donut {
+        width: 100%;
+        height: auto;
+        /* Starts the first slice at twelve o'clock instead of three. */
+        transform: rotate(-90deg);
+    }
+
+    .donut-slice {
+        fill: none;
+        stroke: var(--cat-colour);
+        stroke-width: 26;
+    }
+
+    .donut-centre-value {
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        fill: var(--ink);
+    }
+
+    .donut-centre-label {
+        font-family: var(--font-body);
+        font-size: 0.7rem;
+        font-weight: 500;
+        letter-spacing: 0.09em;
+        fill: var(--ink-faint);
+    }
+
+    .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .legend-row:last-child { border-bottom: none; }
+
+    .legend-swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        flex-shrink: 0;
+        background: var(--cat-colour);
+    }
+
+    .legend-name {
+        flex: 1;
+        font-size: 0.9rem;
+        color: var(--ink-soft);
+    }
+
+    .legend-percent {
         font-size: 0.8rem;
+        color: var(--ink-faint);
+        min-width: 3.5rem;
+        text-align: right;
+    }
+
+    .legend-amount {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--ink);
+        min-width: 6rem;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .panel-empty {
+        color: var(--ink-muted);
+        font-size: 0.92rem;
+        text-align: center;
+        padding: 2rem 0;
+    }
+
+    @media (max-width: 860px) {
+        .summary-row { grid-template-columns: 1fr; }
+        .donut-layout { grid-template-columns: 1fr; gap: 1.5rem; }
+        .donut { max-width: 220px; margin: 0 auto; }
     }
 
     @media (max-width: 600px) {
-        .analytics-section { padding: 2rem 1.25rem 3.5rem; }
-        .soon-card         { padding: 2.25rem 1.5rem 2rem; }
-        .soon-title        { font-size: 1.6rem; }
+        .analytics-section { padding: 1.75rem 1.25rem 3rem; }
+        .analytics-panel { padding: 1.25rem; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <section class="analytics-section">
-    <div class="soon-card">
-        <div class="soon-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="9"></circle>
-                <path d="M12 7v5l3 2"></path>
-            </svg>
-        </div>
 
-        <span class="soon-badge">Coming soon</span>
-
-        <h1 class="soon-title">Advanced Analytics</h1>
-
-        <p class="soon-copy">
-            We're working on powerful insights and visualisations to help
-            you understand your spending patterns better.
-        </p>
-
-        <div class="soon-dots" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-
-        <p class="soon-note">We're crafting something special</p>
+    <div class="analytics-header">
+        <h1 class="analytics-title">Analytics</h1>
+        <p class="analytics-subtitle">The last {{ months }} months of your spending.</p>
     </div>
+
+    <div class="summary-row">
+        <div class="summary-card">
+            <p class="summary-label">Total spent</p>
+            <p class="summary-value">₹{{ summary.spent }}</p>
+            <p class="summary-note">across {{ months }} months</p>
+        </div>
+        <div class="summary-card">
+            <p class="summary-label">Monthly average</p>
+            <p class="summary-value">₹{{ summary.monthly_average }}</p>
+            <p class="summary-note">counting only months you spent in</p>
+        </div>
+        <div class="summary-card">
+            <p class="summary-label">Busiest month</p>
+            <p class="summary-value">{{ summary.busiest_month }}</p>
+            <p class="summary-note">₹{{ summary.busiest_amount }}</p>
+        </div>
+    </div>
+
+    <div class="analytics-panel">
+        <h2 class="panel-title">Spending by month</h2>
+
+        <svg class="chart" viewBox="0 0 720 260" role="img"
+             aria-label="Bar chart of spending for each of the last {{ months }} months">
+            {# Gridlines first, so the bars paint over them. #}
+            {% for line in trend.lines %}
+            <line class="chart-grid" x1="52" y1="{{ line.y }}" x2="704" y2="{{ line.y }}"></line>
+            <text class="chart-axis-label" x="44" y="{{ line.y + 4 }}" text-anchor="end">{{ line.label }}</text>
+            {% endfor %}
+
+            {% for bar in trend.bars %}
+            {# A zero month still gets a 3px stub in the border colour — an
+               absent bar would look like a rendering failure. #}
+            <rect class="chart-bar{% if bar.empty %} chart-bar-empty{% endif %}"
+                  x="{{ bar.x }}"
+                  y="{% if bar.empty %}193{% else %}{{ bar.y }}{% endif %}"
+                  width="{{ bar.width }}"
+                  height="{% if bar.empty %}3{% else %}{{ bar.height }}{% endif %}"
+                  rx="3">
+                <title>{{ bar.label }}{% if bar.year %} {{ bar.year }}{% endif %} — ₹{{ bar.amount }}</title>
+            </rect>
+            <text class="chart-month" x="{{ bar.mid }}" y="216" text-anchor="middle">{{ bar.label }}</text>
+            {% if bar.year %}
+            <text class="chart-year" x="{{ bar.mid }}" y="230" text-anchor="middle">{{ bar.year }}</text>
+            {% endif %}
+            {% endfor %}
+        </svg>
+    </div>
+
+    <div class="analytics-panel">
+        <h2 class="panel-title">Where it went</h2>
+
+        {% if donut.empty %}
+        <p class="panel-empty">Nothing logged in the last {{ months }} months — add an expense and the breakdown will fill in.</p>
+        {% else %}
+        <div class="donut-layout">
+            <svg class="donut" viewBox="0 0 200 200" role="img"
+                 aria-label="Ring chart of spending split by category">
+                {# Every slice is the same circle. stroke-dasharray sets how
+                   much of the ring it covers and stroke-dashoffset rotates it
+                   to start where the previous slice ended. #}
+                {% for slice in donut.segments %}
+                <circle class="donut-slice cat cat-{{ slice.slug }}"
+                        cx="100" cy="100" r="{{ donut_r }}"
+                        stroke-dasharray="{{ slice.dash }} {{ slice.gap }}"
+                        stroke-dashoffset="{{ slice.offset }}">
+                    <title>{{ slice.name }} — ₹{{ slice.amount }} ({{ slice.percent }}%)</title>
+                </circle>
+                {% endfor %}
+            </svg>
+
+            <div class="donut-legend">
+                {% for slice in donut.segments %}
+                <div class="legend-row cat cat-{{ slice.slug }}">
+                    <span class="legend-swatch"></span>
+                    <span class="legend-name">{{ slice.name }}</span>
+                    <span class="legend-percent">{{ slice.percent }}%</span>
+                    <span class="legend-amount">₹{{ slice.amount }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
 </section>
 {% endblock %}

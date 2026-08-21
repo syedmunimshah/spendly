@@ -49,6 +49,28 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* Category colours                                                    */
+/* ------------------------------------------------------------------ */
+
+/* Colour arrives through two custom properties set by the .cat-* class, so
+   a badge, a bar and a chart slice for one category can never drift apart.
+   Shared rather than page-local: the profile table and the analytics charts
+   both colour by category, and two copies would eventually disagree. */
+
+.cat {
+    --cat-colour: var(--cat-other);
+    --cat-tint: var(--cat-other-light);
+}
+
+.cat-food { --cat-colour: var(--cat-food); --cat-tint: var(--cat-food-light); }
+.cat-transport { --cat-colour: var(--cat-transport); --cat-tint: var(--cat-transport-light); }
+.cat-bills { --cat-colour: var(--cat-bills); --cat-tint: var(--cat-bills-light); }
+.cat-health { --cat-colour: var(--cat-health); --cat-tint: var(--cat-health-light); }
+.cat-entertainment { --cat-colour: var(--cat-entertainment); --cat-tint: var(--cat-entertainment-light); }
+.cat-shopping { --cat-colour: var(--cat-shopping); --cat-tint: var(--cat-shopping-light); }
+.cat-other { --cat-colour: var(--cat-other); --cat-tint: var(--cat-other-light); }
+
+/* ------------------------------------------------------------------ */
 /* Reset                                                               */
 /* ------------------------------------------------------------------ */
 

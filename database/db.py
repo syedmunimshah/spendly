@@ -244,6 +244,37 @@ def get_category_totals_for_user(user_id, date_from=None, date_to=None):
         conn.close()
 
 
+def get_monthly_totals_for_user(user_id, since=None):
+    """One row per month the user spent anything in, oldest first.
+
+    Grouping happens in SQLite rather than Python because the whole point is
+    to avoid pulling every row across just to add them up — a user with years
+    of history should still send twelve rows to the page.
+
+    strftime works here only because `expenses.date` is ISO YYYY-MM-DD; the
+    first six characters are the month, and they sort in date order. Months
+    with no spending simply do not come back, so a caller drawing a timeline
+    has to fill the gaps itself.
+    """
+    conn = get_db()
+    try:
+        sql = """
+            SELECT strftime('%Y-%m', date) AS month,
+                   SUM(amount) AS total,
+                   COUNT(*) AS count
+            FROM expenses
+            WHERE user_id = ?
+        """
+        params = [user_id]
+        if since:
+            sql += " AND date >= ?"
+            params.append(since)
+        sql += " GROUP BY month ORDER BY month"
+        return conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+
 def insert_expense(user_id, amount, category, date, description=None):
     """Store one expense and hand back its new id.
 

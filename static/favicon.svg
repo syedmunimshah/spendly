@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Spendly">
+  <!-- The same ◈ the navbar wears, drawn rather than typed: a font glyph
+       would depend on DM Sans being available, and a favicon has no page to
+       inherit fonts from. Colours are the accent green and paper from the
+       stylesheet's :root, restated here because an SVG loaded as an icon has
+       no access to the site's custom properties. -->
+  <rect width="64" height="64" rx="14" fill="#1a472a"/>
+  <path d="M32 12 L46 32 L32 52 L18 32 Z" fill="#f7f6f3"/>
+  <path d="M32 22 L39 32 L32 42 L25 32 Z" fill="#1a472a"/>
+</svg>

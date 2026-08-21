@@ -24,6 +24,7 @@ from database.db import (
     get_expense_for_user,
     get_expense_totals_for_user,
     get_expenses_for_user,
+    get_monthly_totals_for_user,
     get_user_by_email,
     get_user_by_id,
     init_db,
@@ -454,12 +455,174 @@ def profile():
     )
 
 
+# ------------------------------------------------------------------ #
+# Analytics                                                           #
+# ------------------------------------------------------------------ #
+
+# Both charts are plain SVG built here and rendered as markup. The geometry
+# is arithmetic, and arithmetic belongs in Python — Jinja would make a mess
+# of it, and doing it server-side means the charts draw with JavaScript off.
+
+# How many months the trend covers, including the current one.
+TREND_MONTHS = 12
+
+# Bar chart canvas. The plot sits inside these margins; the viewBox scales to
+# whatever width the panel ends up being.
+CHART_W = 720
+CHART_H = 260
+PLOT_LEFT = 52
+PLOT_RIGHT = 704
+PLOT_TOP = 16
+PLOT_BOTTOM = 196
+
+# Donut geometry. The radius and stroke together decide how thick the ring is.
+DONUT_R = 70
+DONUT_CIRCUMFERENCE = 2 * math.pi * DONUT_R
+
+
+def _month_starts(today, months):
+    """The first day of each of the last `months` months, oldest first."""
+    starts = []
+    for step in range(months - 1, -1, -1):
+        index = today.month - 1 - step
+        starts.append(date(today.year + index // 12, index % 12 + 1, 1))
+    return starts
+
+
+def _nice_ceiling(value):
+    """Round a maximum up to something a gridline label can say out loud.
+
+    2,847 becomes 3,000 rather than 2,847 — the axis is there to be read at a
+    glance, and an axis that ends on the exact tallest bar tells you nothing
+    the bar did not already.
+    """
+    if value <= 0:
+        return 1
+    magnitude = 10 ** (len(str(int(value))) - 1)
+    return int(math.ceil(value / magnitude) * magnitude)
+
+
+def build_trend(rows, today, months=TREND_MONTHS):
+    """Bar geometry for the monthly trend, with empty months filled in.
+
+    The query only returns months that had spending. Drawing straight from it
+    would silently close the gaps and turn a three-month break into three
+    adjacent bars, so the timeline is rebuilt here and the totals dropped in.
+    """
+    totals = {row["month"]: row["total"] for row in rows}
+    starts = _month_starts(today, months)
+
+    top = _nice_ceiling(max([totals.get(m.strftime("%Y-%m"), 0) for m in starts] or [0]))
+    plot_h = PLOT_BOTTOM - PLOT_TOP
+    slot = (PLOT_RIGHT - PLOT_LEFT) / months
+    # A gap either side of each bar, so twelve bars read as twelve and not as
+    # one solid block.
+    width = slot * 0.62
+
+    bars = []
+    for i, start in enumerate(starts):
+        amount = totals.get(start.strftime("%Y-%m"), 0)
+        height = plot_h * amount / top
+        bars.append(
+            {
+                "label": start.strftime("%b"),
+                # Only January carries its year, which is enough to tell two
+                # Januaries apart without repeating "2026" twelve times.
+                "year": start.strftime("%Y") if start.month == 1 else "",
+                "amount": format_rupees(amount),
+                "empty": amount == 0,
+                "x": PLOT_LEFT + slot * i + (slot - width) / 2,
+                "y": PLOT_BOTTOM - height,
+                "width": width,
+                "height": height,
+                "mid": PLOT_LEFT + slot * i + slot / 2,
+            }
+        )
+
+    # Four gridlines plus the baseline, evenly spaced.
+    lines = [
+        {
+            "y": PLOT_BOTTOM - plot_h * step / 4,
+            "label": format_rupees(top * step / 4),
+        }
+        for step in range(5)
+    ]
+
+    return {"bars": bars, "lines": lines, "empty": top == 1 and not totals}
+
+
+def build_donut(category_totals):
+    """Ring segments for the category split, largest first.
+
+    Each segment is the same circle with a different dash pattern: `dash` is
+    how much of the circumference it covers, `offset` rotates it to start
+    where the previous one ended. One shape, seven rotations — no arc paths
+    and no trigonometry in the template.
+    """
+    total = sum(row["total"] for row in category_totals)
+    if not total:
+        return {"segments": [], "total": format_rupees(0), "empty": True}
+
+    segments = []
+    consumed = 0.0
+    for row in category_totals:
+        share = row["total"] / total
+        segments.append(
+            {
+                "name": row["category"],
+                "slug": row["category"].lower(),
+                "amount": format_rupees(row["total"]),
+                "percent": round(share * 100, 1),
+                "dash": DONUT_CIRCUMFERENCE * share,
+                "gap": DONUT_CIRCUMFERENCE * (1 - share),
+                # Negative because SVG runs the dash offset backwards.
+                "offset": -DONUT_CIRCUMFERENCE * consumed,
+            }
+        )
+        consumed += share
+
+    return {"segments": segments, "total": format_rupees(total), "empty": False}
+
+
 @app.route("/analytics")
 @login_required
 def analytics():
-    # The charts themselves land in a later step. Until then this renders a
-    # real page rather than a bare string, so the nav link never dead-ends.
-    return render_template("analytics.html")
+    user = current_user()
+    today = date.today()
+
+    # Only the window the chart draws — a user with years of history should
+    # not ship all of it across to render twelve bars.
+    since = _month_starts(today, TREND_MONTHS)[0].isoformat()
+    monthly = get_monthly_totals_for_user(user["id"], since=since)
+
+    spent = sum(row["total"] for row in monthly)
+    months_with_spending = [row for row in monthly if row["total"]]
+    busiest = max(monthly, key=lambda row: row["total"], default=None)
+
+    summary = {
+        "spent": format_rupees(spent),
+        # Averaged over the months that actually had spending, not over all
+        # twelve — a brand-new account would otherwise look frugal rather
+        # than empty.
+        "monthly_average": format_rupees(
+            spent / len(months_with_spending) if months_with_spending else 0
+        ),
+        "busiest_month": (
+            datetime.strptime(busiest["month"], "%Y-%m").strftime("%B %Y")
+            if busiest and busiest["total"]
+            else EMPTY
+        ),
+        "busiest_amount": format_rupees(busiest["total"]) if busiest else format_rupees(0),
+    }
+
+    return render_template(
+        "analytics.html",
+        summary=summary,
+        trend=build_trend(monthly, today),
+        donut=build_donut(get_category_totals_for_user(user["id"], date_from=since)),
+        months=TREND_MONTHS,
+        donut_r=DONUT_R,
+    )
 
 
 def read_expense_form(form_data):
