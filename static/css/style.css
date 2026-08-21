@@ -559,6 +559,26 @@ select.form-input {
 
 .btn-submit:hover { background: var(--accent); }
 
+/* Sits under the full-width submit button. .btn-ghost is inline-block with
+   its own padding, so it needs this to line up rather than hug its text. */
+.form-cancel {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 0.75rem;
+}
+
+/* Visible to screen readers only — for a heading or label that the layout
+   does not need to show but the markup still needs to carry. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
 .auth-switch {
     text-align: center;
     font-size: 0.875rem;

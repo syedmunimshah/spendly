@@ -2,19 +2,6 @@
 
 {% block title %}Add Expense — Spendly{% endblock %}
 
-{% block head %}
-<style>
-    /* The submit button is full width; .btn-ghost is inline-block with its own
-       padding, so the cancel link needs this to sit squarely underneath it. */
-    .add-cancel {
-        display: block;
-        width: 100%;
-        text-align: center;
-        margin-top: 0.75rem;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <section class="auth-section">
     <div class="auth-container">
@@ -29,48 +16,9 @@
             <div class="auth-error">{{ error }}</div>
             {% endif %}
 
-            <form method="POST" action="{{ url_for('add_expense') }}">
-                <div class="form-group">
-                    <label for="amount">Amount (₹)</label>
-                    <input type="number" id="amount" name="amount"
-                           class="form-input" placeholder="450.00"
-                           step="0.01" min="0.01"
-                           value="{{ form.amount if form else '' }}"
-                           required autofocus>
-                </div>
-
-                <div class="form-group">
-                    <label for="category">Category</label>
-                    <div class="select-wrap">
-                        <select id="category" name="category" class="form-input" required>
-                            {% for category in categories %}
-                            <option value="{{ category }}"{% if form and form.category == category %} selected{% endif %}>{{ category }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="date">Date</label>
-                    {# Defaults to today on a fresh form, but keeps whatever was
-                       submitted when the page comes back with an error. #}
-                    <input type="date" id="date" name="date"
-                           class="form-input"
-                           value="{{ form.date if form else today }}"
-                           required>
-                </div>
-
-                <div class="form-group">
-                    <label for="description">Description <span class="label-hint">(optional)</span></label>
-                    <input type="text" id="description" name="description"
-                           class="form-input" placeholder="Lunch with the team"
-                           maxlength="200"
-                           value="{{ form.description if form else '' }}">
-                </div>
-
-                <button type="submit" class="btn-submit">Save Expense</button>
-                <a href="{{ url_for('profile') }}" class="btn-ghost add-cancel">Cancel</a>
-            </form>
+            {% with action = url_for('add_expense'), submit_label = 'Save Expense' %}
+                {% include "_expense_form.html" %}
+            {% endwith %}
         </div>
 
     </div>

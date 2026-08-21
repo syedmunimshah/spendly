@@ -277,6 +277,18 @@
 
     /* Tabular figures so the rupee column lines up digit for digit instead
        of wobbling with the width of each numeral. */
+    .txn-actions a {
+        color: var(--ink-muted);
+        font-size: 0.85rem;
+        text-decoration: none;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .txn-actions a:hover {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }
+
     .txn-amount {
         text-align: right;
         white-space: nowrap;
@@ -452,6 +464,7 @@
                             <th>Description</th>
                             <th>Category</th>
                             <th class="txn-amount">Amount</th>
+                            <th><span class="sr-only">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -463,6 +476,9 @@
                                 <span class="cat cat-badge cat-{{ txn.category | lower }}">{{ txn.category }}</span>
                             </td>
                             <td class="txn-amount">₹{{ txn.amount }}</td>
+                            <td class="txn-actions">
+                                <a href="{{ url_for('edit_expense', expense_id=txn.id) }}">Edit</a>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

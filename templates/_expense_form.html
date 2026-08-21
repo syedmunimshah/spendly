@@ -1,0 +1,49 @@
+{# The four expense fields, shared by the add and edit forms.
+
+   Both pages post the same shape, so the fields live here and each page
+   supplies only what differs: `action`, `submit_label`, and the `form` dict
+   of current values. Add renders with no `form` on a fresh GET, hence the
+   `form.x if form else ''` guard on every value. #}
+
+<form method="POST" action="{{ action }}">
+    <div class="form-group">
+        <label for="amount">Amount (₹)</label>
+        <input type="number" id="amount" name="amount"
+               class="form-input" placeholder="450.00"
+               step="0.01" min="0.01"
+               value="{{ form.amount if form else '' }}"
+               required autofocus>
+    </div>
+
+    <div class="form-group">
+        <label for="category">Category</label>
+        <div class="select-wrap">
+            <select id="category" name="category" class="form-input" required>
+                {% for category in categories %}
+                <option value="{{ category }}"{% if form and form.category == category %} selected{% endif %}>{{ category }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="date">Date</label>
+        {# On the add page `today` fills a fresh form; on edit the stored date
+           is already in `form`, so this falls through to it either way. #}
+        <input type="date" id="date" name="date"
+               class="form-input"
+               value="{{ form.date if form else today }}"
+               required>
+    </div>
+
+    <div class="form-group">
+        <label for="description">Description <span class="label-hint">(optional)</span></label>
+        <input type="text" id="description" name="description"
+               class="form-input" placeholder="Lunch with the team"
+               maxlength="200"
+               value="{{ form.description if form else '' }}">
+    </div>
+
+    <button type="submit" class="btn-submit">{{ submit_label }}</button>
+    <a href="{{ url_for('profile') }}" class="btn-ghost form-cancel">Cancel</a>
+</form>
