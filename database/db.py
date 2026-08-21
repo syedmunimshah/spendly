@@ -6,6 +6,7 @@ Three functions make up the whole contract:
     seed_db()  — inserts demo data once, for development
 """
 
+import os
 import sqlite3
 from datetime import date
 from pathlib import Path
@@ -15,7 +16,14 @@ from werkzeug.security import generate_password_hash
 # The database file lives at the project root, next to app.py. Resolving it
 # from __file__ (rather than a relative path) means it lands in the same place
 # no matter which directory the app was started from.
-DB_PATH = Path(__file__).resolve().parent.parent / "expense_tracker.db"
+#
+# SPENDLY_DB_PATH overrides it for deployment. A hosted container rebuilds its
+# own directory on every deploy, so the file has to sit on a mounted volume or
+# every release would wipe the data.
+DB_PATH = Path(
+    os.environ.get("SPENDLY_DB_PATH")
+    or Path(__file__).resolve().parent.parent / "expense_tracker.db"
+)
 
 # The fixed category list. Later steps (the add/edit expense forms) import this
 # so the options stay in one place.
@@ -41,6 +49,9 @@ def get_db():
     SQLite disables foreign keys by default on *every* connection, so the
     PRAGMA has to be set here rather than once at table-creation time.
     """
+    # The volume mount point exists, but a nested path under it may not on the
+    # very first boot — SQLite creates the file, never the folders above it.
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
