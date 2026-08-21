@@ -277,16 +277,54 @@
 
     /* Tabular figures so the rupee column lines up digit for digit instead
        of wobbling with the width of each numeral. */
-    .txn-actions a {
-        color: var(--ink-muted);
-        font-size: 0.85rem;
-        text-decoration: none;
-        border-bottom: 1px solid var(--border);
+    /* Same pill as .cat-badge one column over — same padding, radius, size
+       and weight — so the row reads as one design rather than a table with
+       buttons bolted on. Only the tint changes. */
+    .txn-actions {
+        white-space: nowrap;
+        text-align: right;
     }
 
-    .txn-actions a:hover {
+    .txn-actions form {
+        display: inline-block;
+        margin-left: 0.4rem;
+    }
+
+    .txn-edit,
+    .txn-delete {
+        display: inline-block;
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+        font-family: var(--font-body);
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .txn-edit {
+        background: var(--accent-light);
         color: var(--accent);
-        border-bottom-color: var(--accent);
+    }
+
+    .txn-delete {
+        background: var(--danger-light);
+        color: var(--danger);
+    }
+
+    /* Filled on hover, so the one you are about to click is unmistakable —
+       the tinted resting state keeps the table calm until then. */
+    .txn-edit:hover {
+        background: var(--accent);
+        color: var(--paper-card);
+    }
+
+    .txn-delete:hover {
+        background: var(--danger);
+        color: var(--paper-card);
     }
 
     .txn-amount {
@@ -477,7 +515,14 @@
                             </td>
                             <td class="txn-amount">₹{{ txn.amount }}</td>
                             <td class="txn-actions">
-                                <a href="{{ url_for('edit_expense', expense_id=txn.id) }}">Edit</a>
+                                <a class="txn-edit" href="{{ url_for('edit_expense', expense_id=txn.id) }}">Edit</a>
+                                {# A form, not a link: delete is POST only, so a
+                                   crawler or a prefetch cannot trigger it. #}
+                                <form method="POST"
+                                      action="{{ url_for('delete_expense', expense_id=txn.id) }}"
+                                      onsubmit="return confirm('Delete this expense? This cannot be undone.');">
+                                    <button type="submit" class="txn-delete">Delete</button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}
