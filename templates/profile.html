@@ -327,6 +327,84 @@
         color: var(--paper-card);
     }
 
+    /* ---------------------------------------------------------------- */
+    /* Delete confirmation                                               */
+    /* ---------------------------------------------------------------- */
+
+    /* Same overlay and dialog shell as the landing page modal, so the app
+       has one idea of what a dialog looks like. */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 15, 15, 0.65);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        z-index: 1000;
+    }
+
+    .modal-overlay[hidden] { display: none; }
+
+    .modal-dialog {
+        background: var(--paper-card);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .delete-dialog {
+        width: 100%;
+        max-width: 420px;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .delete-title {
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        color: var(--ink);
+        margin-bottom: 0.75rem;
+    }
+
+    .delete-body {
+        font-size: 0.92rem;
+        line-height: 1.7;
+        color: var(--ink-muted);
+        margin-bottom: 1.75rem;
+    }
+
+    .delete-target {
+        color: var(--ink);
+        font-weight: 500;
+    }
+
+    .delete-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: center;
+    }
+
+    .delete-cancel,
+    .btn-confirm-delete {
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 0.6rem 1.5rem;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+    }
+
+    /* Filled, not tinted: inside the dialog this is the deliberate choice,
+       not a control you might brush past on a table row. */
+    .btn-confirm-delete {
+        background: var(--danger);
+        color: var(--paper-card);
+        border: 1px solid var(--danger);
+        transition: opacity 0.2s;
+    }
+
+    .btn-confirm-delete:hover { opacity: 0.88; }
+
     .txn-amount {
         text-align: right;
         white-space: nowrap;
@@ -517,10 +595,14 @@
                             <td class="txn-actions">
                                 <a class="txn-edit" href="{{ url_for('edit_expense', expense_id=txn.id) }}">Edit</a>
                                 {# A form, not a link: delete is POST only, so a
-                                   crawler or a prefetch cannot trigger it. #}
+                                   crawler or a prefetch cannot trigger it. The
+                                   button opens the dialog rather than
+                                   submitting; the dialog submits this form. #}
                                 <form method="POST"
                                       action="{{ url_for('delete_expense', expense_id=txn.id) }}"
-                                      onsubmit="return confirm('Delete this expense? This cannot be undone.');">
+                                      data-delete-form
+                                      data-label="{{ txn.description }}"
+                                      data-amount="{{ txn.amount }}">
                                     <button type="submit" class="txn-delete">Delete</button>
                                 </form>
                             </td>
@@ -555,4 +637,82 @@
 
 </section>
 
+{# One dialog for the whole table rather than one per row — it is told which
+   form to submit when it opens. #}
+<div class="modal-overlay" id="delete-modal" hidden
+     role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+    <div class="modal-dialog delete-dialog">
+        <h2 class="delete-title" id="delete-modal-title">Delete this expense?</h2>
+        <p class="delete-body">
+            <span class="delete-target" id="delete-modal-target"></span>
+            will be removed permanently. This cannot be undone.
+        </p>
+        <div class="delete-actions">
+            <button type="button" class="btn-ghost delete-cancel" id="delete-modal-cancel">Cancel</button>
+            <button type="button" class="btn-confirm-delete" id="delete-modal-confirm">Delete</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var modal = document.getElementById('delete-modal');
+    var target = document.getElementById('delete-modal-target');
+    var cancelBtn = document.getElementById('delete-modal-cancel');
+    var confirmBtn = document.getElementById('delete-modal-confirm');
+    var pendingForm = null;
+    var lastFocused = null;
+
+    function openModal(form) {
+        pendingForm = form;
+        lastFocused = document.activeElement;
+
+        var label = form.dataset.label;
+        var amount = form.dataset.amount;
+        // An expense with no description renders as an em dash in the table,
+        // which reads badly mid-sentence — name it by its amount instead.
+        target.textContent = (label && label !== '—')
+            ? '“' + label + '” (₹' + amount + ')'
+            : '₹' + amount;
+
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        confirmBtn.focus();
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+        pendingForm = null;
+        document.body.style.overflow = '';
+        if (lastFocused) lastFocused.focus();
+    }
+
+    // Delegated, so rows added by a future filter or paging still work.
+    document.addEventListener('submit', function (event) {
+        var form = event.target.closest('[data-delete-form]');
+        if (!form) return;
+        event.preventDefault();
+        openModal(form);
+    });
+
+    // HTMLFormElement.submit() does not fire the submit event, so this cannot
+    // loop back into the handler above.
+    confirmBtn.addEventListener('click', function () {
+        if (pendingForm) pendingForm.submit();
+    });
+
+    cancelBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', function (event) {
+        if (event.target === modal) closeModal();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !modal.hidden) closeModal();
+    });
+})();
+</script>
 {% endblock %}
