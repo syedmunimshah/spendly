@@ -6,7 +6,7 @@ A personal expense tracker built with Flask and SQLite. Log what you spend, grou
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12" />
   <img src="https://img.shields.io/badge/Flask-3.1-000000?style=flat-square&logo=flask&logoColor=white" alt="Flask 3.1" />
   <img src="https://img.shields.io/badge/SQLite-raw_SQL-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite" />
-  <img src="https://img.shields.io/badge/tests-85_passing-3B6D11?style=flat-square&logo=pytest&logoColor=white" alt="85 tests passing" />
+  <img src="https://img.shields.io/badge/tests-128_passing-3B6D11?style=flat-square&logo=pytest&logoColor=white" alt="128 tests passing" />
 </p>
 
 ---
@@ -18,11 +18,9 @@ Spendly is a small, deliberately un-clever web app. You sign up, sign in, and ge
 - **Summary cards** — total spent, number of transactions, and the busiest category at a glance
 - **Category breakdown** — spending split across Food, Transport, Bills, Health, Entertainment, Shopping and Other, each with its own colour
 - **Recent transactions** — the latest ten entries, dated and categorised
-- **Add an expense** — a validated form taking amount, category, date and an optional description
+- **Add, edit and delete** — a validated form for logging an expense, the same form for changing one, and a delete that only ever reaches your own rows
 - **Date filter** — one-click presets (This Month, Last 3 Months, Last 6 Months, All Time) or a custom range. The filter lives entirely in the query string, so any filtered view is a URL you can bookmark, share, and refresh
 - **Session-based auth** — register, sign in, sign out, with hashed passwords and every query scoped to the signed-in user
-
-Editing and deleting expenses are the next steps in the build; those routes are present as labelled placeholders.
 
 ---
 
@@ -35,7 +33,7 @@ Editing and deleting expenses are the next steps in the build; those routes are 
 | Passwords | **Werkzeug** `generate_password_hash` | Never stores a plaintext password |
 | Templates | **Jinja2** | Every page extends one `base.html` |
 | Styling | **Hand-written CSS** | One stylesheet, design tokens in `:root`, no framework and no build step |
-| Tests | **pytest** + **pytest-flask** | 85 tests against the Flask test client |
+| Tests | **pytest** + **pytest-flask** | 128 tests against the Flask test client |
 
 No Node, no bundler, no ORM, no CSS framework. Four dependencies total.
 
@@ -66,7 +64,7 @@ python -m pytest
 ```
 
 ```bash
-python -m pytest tests/test_07-add-expense.py -v
+python -m pytest tests/test_08-edit-delete-expense.py -v
 ```
 
 ---
@@ -83,7 +81,9 @@ templates/
   register.html         .
   login.html            .
   profile.html          summary cards, category breakdown, transactions, date filter
-  add_expense.html      the add-expense form
+  _expense_form.html    the shared expense fields, included by both forms below
+  add_expense.html      logging a new expense
+  edit_expense.html     changing one, plus the delete danger zone
   analytics.html        placeholder for the charts still to come
   terms.html            .
   privacy.html          .
@@ -110,6 +110,8 @@ A few decisions worth calling out, since they were deliberate rather than accide
 
 - **Every query is parameterised.** User input never reaches SQL as text — dates from the query string are parsed into real `date` objects before they go anywhere near the database.
 - **Ownership comes from the session, never the form.** A crafted POST carrying someone else's user id cannot file an expense against them, and there is a regression test for exactly that.
+- **Ownership is enforced in the WHERE clause, not afterwards.** Every expense query carries `user_id`, so another user's id in the URL returns nothing rather than returning a row that then has to be checked. Missing and not-yours are the same 404.
+- **Destructive actions are POST only.** A `GET` delete route can be fired by a crawler, a prefetching browser, or an `<img src>` on any page you happen to visit.
 - **Dates are normalised before storage.** `strptime` accepts `2026-3-20`, which sorts wrong as TEXT and would silently fall outside the date filter, so what gets stored is always `isoformat()`.
 - **Filters live in the URL, not the session.** A filtered profile page is shareable and the browser's back button behaves the way it looks like it should.
 - **Malformed input degrades quietly.** A broken date in the query string falls back to an unfiltered view instead of throwing a 500.
@@ -134,8 +136,8 @@ Every change also goes through a security pass and a code-quality pass before it
 | Profile page | Done |
 | Date filter | Done |
 | Add expense | Done |
+| Edit / delete expense | Done |
 | Analytics | Placeholder page |
-| Edit / delete expense | Not yet built |
 
 ---
 
