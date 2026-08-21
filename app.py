@@ -4,14 +4,24 @@ import sqlite3
 from datetime import date, datetime
 from functools import wraps
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    abort,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import (
     CATEGORIES,
     create_user,
+    delete_expense_row,
     get_category_totals_for_user,
     get_db,
+    get_expense_for_user,
     get_expense_totals_for_user,
     get_expenses_for_user,
     get_user_by_email,
@@ -19,6 +29,7 @@ from database.db import (
     init_db,
     insert_expense,
     seed_db,
+    update_expense_row,
 )
 
 app = Flask(__name__)
@@ -405,6 +416,8 @@ def profile():
 
     transactions = [
         {
+            # Carried through so each row can link to its own edit page.
+            "id": expense["id"],
             "date": format_date(expense["date"]),
             # A description is optional in the schema; the cell still needs
             # something in it.
@@ -441,6 +454,80 @@ def profile():
     )
 
 
+@app.route("/analytics")
+@login_required
+def analytics():
+    # The charts themselves land in a later step. Until then this renders a
+    # real page rather than a bare string, so the nav link never dead-ends.
+    return render_template("analytics.html")
+
+
+def read_expense_form(form_data):
+    """Pull the four expense fields off a submitted form, stripped.
+
+    Add and edit post the same shape, so both read it through here rather
+    than repeating four request.form.get() calls each.
+    """
+    return {
+        "amount": form_data.get("amount", "").strip(),
+        "category": form_data.get("category", "").strip(),
+        "date": form_data.get("date", "").strip(),
+        "description": form_data.get("description", "").strip(),
+    }
+
+
+def validate_expense_form(form):
+    """Turn a raw expense form into stored values, or an error message.
+
+    Returns (values, error): exactly one of the two is None. `values` is the
+    dict insert_expense/update_expense want, already normalised.
+
+    Every rule here is re-checked server-side even though the form carries
+    min, step and maxlength — those constrain the browser, not a raw POST.
+    """
+    if not form["amount"]:
+        return None, "Please enter an amount."
+
+    try:
+        amount = float(form["amount"])
+    except ValueError:
+        return None, "Amount must be a number."
+
+    # float() happily returns nan and inf, and both would sail past the check
+    # below — nan fails every comparison, inf passes them all — straight into
+    # the REAL column. Neither is reachable through the form, only a raw POST.
+    if not math.isfinite(amount):
+        return None, "Amount must be a number."
+
+    if amount <= 0:
+        return None, "Amount must be greater than zero."
+
+    if form["category"] not in CATEGORIES:
+        return None, "Please choose a category."
+
+    # Missing and malformed collapse into one message: the field is required
+    # and must parse, and the user cannot act differently on the two.
+    parsed_date = _parse_iso(form["date"])
+    if parsed_date is None:
+        return None, "Please enter a valid date."
+
+    if len(form["description"]) > DESCRIPTION_MAX:
+        return None, "Description must be {} characters or less.".format(
+            DESCRIPTION_MAX
+        )
+
+    return {
+        # Rounded so the stored figure matches what format_rupees prints —
+        # otherwise the summary total would not reconcile with the rows.
+        "amount": round(amount, 2),
+        "category": form["category"],
+        # isoformat(), not the raw string: strptime accepts "2026-3-20", which
+        # sorts wrong as TEXT and would quietly fall outside the date filter.
+        "date": parsed_date.isoformat(),
+        "description": form["description"] or None,
+    }, None
+
+
 @app.route("/expenses/add", methods=["GET", "POST"])
 @login_required
 def add_expense():
@@ -451,21 +538,12 @@ def add_expense():
             "add_expense.html", categories=CATEGORIES, today=today
         )
 
-    amount_raw = request.form.get("amount", "").strip()
-    category = request.form.get("category", "").strip()
-    date_raw = request.form.get("date", "").strip()
-    description = request.form.get("description", "").strip()
-
     # Whatever was typed comes back with the page, unparsed, so a rejected
     # submission looks exactly as the user left it.
-    form = {
-        "amount": amount_raw,
-        "category": category,
-        "date": date_raw,
-        "description": description,
-    }
+    form = read_expense_form(request.form)
+    values, error = validate_expense_form(form)
 
-    def fail(error):
+    if error:
         return render_template(
             "add_expense.html",
             error=error,
@@ -474,73 +552,78 @@ def add_expense():
             today=today,
         )
 
-    if not amount_raw:
-        return fail("Please enter an amount.")
-
-    try:
-        amount = float(amount_raw)
-    except ValueError:
-        return fail("Amount must be a number.")
-
-    # float() happily returns nan and inf, and both would sail past the check
-    # below — nan fails every comparison, inf passes them all — straight into
-    # the REAL column. Neither is reachable through the form, only a raw POST.
-    if not math.isfinite(amount):
-        return fail("Amount must be a number.")
-
-    if amount <= 0:
-        return fail("Amount must be greater than zero.")
-
-    if category not in CATEGORIES:
-        return fail("Please choose a category.")
-
-    # Missing and malformed collapse into one message: the field is required
-    # and must parse, and the user cannot act differently on the two.
-    parsed_date = _parse_iso(date_raw)
-    if parsed_date is None:
-        return fail("Please enter a valid date.")
-
-    if len(description) > DESCRIPTION_MAX:
-        return fail(
-            "Description must be {} characters or less.".format(DESCRIPTION_MAX)
-        )
-
     insert_expense(
         session["user_id"],
-        # Rounded so the stored figure matches what format_rupees prints —
-        # otherwise the summary total would not reconcile with the rows.
-        round(amount, 2),
-        category,
-        # isoformat(), not date_raw: strptime accepts "2026-3-20", which sorts
-        # wrong as TEXT and would quietly fall outside the Step 6 date filter.
-        parsed_date.isoformat(),
-        description or None,
+        values["amount"],
+        values["category"],
+        values["date"],
+        values["description"],
     )
 
     return redirect(url_for("profile"))
 
 
-@app.route("/analytics")
+@app.route("/expenses/<int:expense_id>/edit", methods=["GET", "POST"])
 @login_required
-def analytics():
-    # The charts themselves land in a later step. Until then this renders a
-    # real page rather than a bare string, so the nav link never dead-ends.
-    return render_template("analytics.html")
+def edit_expense(expense_id):
+    # Scoped to the signed-in user, so somebody else's id in the URL is a 404
+    # rather than a peek at their spending. "Missing" and "not yours" are
+    # deliberately the same answer.
+    expense = get_expense_for_user(expense_id, session["user_id"])
+    if expense is None:
+        abort(404)
+
+    if request.method == "GET":
+        return render_template(
+            "edit_expense.html",
+            expense=expense,
+            categories=CATEGORIES,
+            form={
+                "amount": "{:.2f}".format(expense["amount"]),
+                "category": expense["category"],
+                "date": expense["date"],
+                "description": expense["description"] or "",
+            },
+        )
+
+    form = read_expense_form(request.form)
+    values, error = validate_expense_form(form)
+
+    if error:
+        return render_template(
+            "edit_expense.html",
+            error=error,
+            expense=expense,
+            form=form,
+            categories=CATEGORIES,
+        )
+
+    update_expense_row(
+        expense_id,
+        session["user_id"],
+        values["amount"],
+        values["category"],
+        values["date"],
+        values["description"],
+    )
+
+    return redirect(url_for("profile"))
+
+
+# POST only. A link or a GET here would let a crawler, a prefetching browser
+# or an <img src> on someone else's page wipe a row just by being followed.
+@app.route("/expenses/<int:expense_id>/delete", methods=["POST"])
+@login_required
+def delete_expense(expense_id):
+    if not delete_expense_row(expense_id, session["user_id"]):
+        abort(404)
+
+    return redirect(url_for("profile"))
 
 
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
-
-@app.route("/expenses/<int:id>/edit")
-def edit_expense(id):
-    return "Edit expense — coming in Step 8"
-
-
-@app.route("/expenses/<int:id>/delete")
-def delete_expense(id):
-    return "Delete expense — coming in Step 9"
-
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

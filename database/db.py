@@ -273,6 +273,67 @@ def insert_expense(user_id, amount, category, date, description=None):
         conn.close()
 
 
+def get_expense_for_user(expense_id, user_id):
+    """One expense, but only if it belongs to this user — otherwise None.
+
+    Both ids are in the WHERE clause on purpose. Fetching by id alone and
+    comparing user_id afterwards would work too, but it puts the ownership
+    check somewhere a caller can forget; here a row simply does not come back
+    for somebody else's expense, and "missing" and "not yours" become the
+    same answer. That also means an attacker cannot tell the two apart.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def update_expense_row(expense_id, user_id, amount, category, date, description=None):
+    """Overwrite one expense and report whether anything was actually changed.
+
+    Returns the number of rows touched, so a caller can tell an edit that
+    landed from one aimed at a row that is missing or belongs to somebody
+    else. The user_id in the WHERE clause is what makes the second case
+    impossible rather than merely unlikely.
+    """
+    conn = get_db()
+    try:
+        with conn:
+            cur = conn.execute(
+                """
+                UPDATE expenses
+                SET amount = ?, category = ?, date = ?, description = ?
+                WHERE id = ? AND user_id = ?
+                """,
+                (amount, category, date, description, expense_id, user_id),
+            )
+        return cur.rowcount
+    finally:
+        conn.close()
+
+
+def delete_expense_row(expense_id, user_id):
+    """Remove one expense, returning how many rows went.
+
+    Scoped by user_id for the same reason as update_expense_row: somebody else's
+    id in the URL deletes nothing rather than deleting their row.
+    """
+    conn = get_db()
+    try:
+        with conn:
+            cur = conn.execute(
+                "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+                (expense_id, user_id),
+            )
+        return cur.rowcount
+    finally:
+        conn.close()
+
+
 # ------------------------------------------------------------------ #
 # Sample data                                                         #
 # ------------------------------------------------------------------ #
