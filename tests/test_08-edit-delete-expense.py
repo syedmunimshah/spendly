@@ -286,19 +286,31 @@ def test_edit_category_dropdown_lists_exactly_the_seven_categories(
     assert select_options(body) == list(CATEGORIES)
 
 
-def test_edit_page_contains_a_separate_delete_form(
+def test_the_profile_row_carries_a_delete_form(
     client, flask_app, fresh_user_id, own_expense_id
 ):
+    """Deleting is reachable from the list, not buried inside the edit page."""
+    sign_in(client, fresh_user_id)
+
+    body = client.get("/profile").get_data(as_text=True)
+
+    assert delete_url(flask_app, own_expense_id) in body, (
+        "each row should carry a form posting to the delete route"
+    )
+    # A form rather than an anchor: the route is POST only, so a link here
+    # would be dead anyway — and a GET one could be fired by a prefetch.
+    assert "<form" in body
+
+
+def test_the_edit_page_does_not_repeat_the_delete_control(
+    client, flask_app, fresh_user_id, own_expense_id
+):
+    """One place to delete from, so there is one habit to learn."""
     sign_in(client, fresh_user_id)
 
     body = client.get(edit_url(flask_app, own_expense_id)).get_data(as_text=True)
 
-    assert delete_url(flask_app, own_expense_id) in body, (
-        "the delete form should post to the delete route"
-    )
-    # Two independent <form> tags, not one nested inside the other — deleting
-    # must not carry the edited field values along with it.
-    assert body.count("<form") >= 2
+    assert delete_url(flask_app, own_expense_id) not in body
 
 
 # ------------------------------------------------------------------ #

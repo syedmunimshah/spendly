@@ -2,51 +2,13 @@
 
 {% block title %}Edit Expense — Spendly{% endblock %}
 
-{% block head %}
-<style>
-    /* Deleting is separated from the form above it — same panel, but its own
-       block, so the destructive button is never the one you hit by reflex
-       after tabbing through the fields. */
-    .danger-zone {
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--border);
-        text-align: center;
-    }
-
-    .danger-note {
-        color: var(--ink-muted);
-        font-size: 0.85rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .btn-danger {
-        padding: 0.55rem 1.25rem;
-        background: var(--danger-light);
-        color: var(--danger);
-        border: 1px solid var(--danger);
-        border-radius: var(--radius-sm);
-        font-family: var(--font-body);
-        font-size: 0.9rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.2s, color 0.2s;
-    }
-
-    .btn-danger:hover {
-        background: var(--danger);
-        color: var(--paper-card);
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <section class="auth-section">
     <div class="auth-container">
 
         <div class="auth-header">
             <h1 class="auth-title">Edit expense</h1>
-            <p class="auth-subtitle">Change what you logged, or remove it entirely.</p>
+            <p class="auth-subtitle">Change what you logged and save it back.</p>
         </div>
 
         <div class="auth-card">
@@ -57,16 +19,6 @@
             {% with action = url_for('edit_expense', expense_id=expense.id), submit_label = 'Save Changes' %}
                 {% include "_expense_form.html" %}
             {% endwith %}
-
-            {# Its own form, outside the one above: deleting must not carry the
-               edited field values, and nesting forms is invalid HTML anyway. #}
-            <div class="danger-zone">
-                <p class="danger-note">Deleting an expense cannot be undone.</p>
-                <form method="POST" action="{{ url_for('delete_expense', expense_id=expense.id) }}"
-                      onsubmit="return confirm('Delete this expense? This cannot be undone.');">
-                    <button type="submit" class="btn-danger">Delete Expense</button>
-                </form>
-            </div>
         </div>
 
     </div>
