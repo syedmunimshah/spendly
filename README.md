@@ -13,6 +13,28 @@ A personal expense tracker built with Flask and SQLite. Log what you spend, grou
   <img src="https://img.shields.io/badge/tests-156_passing-3B6D11?style=flat-square&logo=pytest&logoColor=white" alt="156 tests passing" />
 </p>
 
+**Live at [spendly-production-27a9.up.railway.app](https://spendly-production-27a9.up.railway.app)** — deployed on Railway, with the database on a mounted volume so the data survives a redeploy.
+
+---
+
+## Screenshots
+
+### Landing
+
+![Spendly landing page](docs/screenshots/home.png)
+
+### Profile — summary, category breakdown and transactions
+
+The date filter across the top; each row edits or deletes in place.
+
+![Spendly profile page](docs/screenshots/profile.png)
+
+### Analytics — twelve-month trend and category split
+
+Both charts are plain SVG built on the server, so they render with JavaScript off.
+
+![Spendly analytics page](docs/screenshots/analytics.png)
+
 ---
 
 ## What it does
