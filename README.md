@@ -11,6 +11,7 @@ A personal expense tracker built with Flask and SQLite. Log what you spend, grou
   <img src="https://img.shields.io/badge/Flask-3.1-000000?style=flat-square&logo=flask&logoColor=white" alt="Flask 3.1" />
   <img src="https://img.shields.io/badge/SQLite-raw_SQL-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite" />
   <img src="https://img.shields.io/badge/tests-156_passing-3B6D11?style=flat-square&logo=pytest&logoColor=white" alt="156 tests passing" />
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT license" />
 </p>
 
 **Live at [spendly-production-27a9.up.railway.app](https://spendly-production-27a9.up.railway.app)** — deployed on Railway, with the database on a mounted volume so the data survives a redeploy.
@@ -177,6 +178,12 @@ Three things the app needed before it could be hosted:
 - **gunicorn** instead of Flask's own server, bound to `0.0.0.0:$PORT`. A container listening on localhost is unreachable from outside it. One worker on purpose — several processes writing to one SQLite file over a network volume is how you collect lock errors.
 - **`SPENDLY_DB_PATH`**, so the database sits on a mounted volume at `/data`. A hosted container rebuilds its own directory on every deploy, so a file next to `app.py` would be wiped by each release.
 - **`SPENDLY_SECRET_KEY`** set as a real secret. The code falls back to a development key so the dev server runs out of the box, and shipping that fallback would mean forgeable sessions.
+
+---
+
+## License
+
+Released under the [MIT License](LICENSE).
 
 ---
 
